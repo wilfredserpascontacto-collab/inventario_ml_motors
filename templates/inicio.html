@@ -19,20 +19,20 @@
     {% if turno %}
     <div class="alert mb-4 d-flex align-items-center gap-2 py-2"
          style="background:#e8f5e9; border:1.5px solid #43a047; border-radius:10px; color:#1b5e20;">
-        <span style="font-size:1.3rem;">&#x1F7E2;</span>
+        <span style="font-size:1.3rem;">🟢</span>
         <div>
-            <strong>Turno activo</strong> &mdash; Caja abierta desde {{ turno['fecha_apertura'] }}
-            &nbsp;&middot;&nbsp; Fondo inicial: ${{ "%.2f"|format(turno['monto_inicial']) }}
-            &nbsp;&middot;&nbsp; <a href="{{ url_for('cerrar_caja') }}" class="text-success fw-semibold">Cerrar caja</a>
+            <strong>Turno activo</strong> — Caja abierta desde {{ turno['fecha_apertura'] }}
+            &nbsp;·&nbsp; Fondo inicial: ${{ "%.2f"|format(turno['monto_inicial']) }}
+            &nbsp;·&nbsp; <a href="{{ url_for('cerrar_caja') }}" class="text-success fw-semibold">Cerrar caja</a>
         </div>
     </div>
     {% else %}
     <div class="alert mb-4 d-flex align-items-center gap-2 py-2"
          style="background:#fff3e0; border:1.5px solid #fb8c00; border-radius:10px; color:#7f4600;">
-        <span style="font-size:1.3rem;">&#x1F534;</span>
+        <span style="font-size:1.3rem;">🔴</span>
         <div>
-            <strong>Caja cerrada</strong> &mdash; No hay ning&uacute;n turno activo.
-            &nbsp;&middot;&nbsp; <a href="{{ url_for('caja') }}" class="fw-semibold" style="color:#e65100;">Abrir caja</a>
+            <strong>Caja cerrada</strong> — No hay ningún turno activo.
+            &nbsp;·&nbsp; <a href="{{ url_for('caja') }}" class="fw-semibold" style="color:#e65100;">Abrir caja</a>
         </div>
     </div>
     {% endif %}
@@ -43,10 +43,10 @@
             <div class="card text-center border-0 shadow-sm h-100"
                  style="border-top: 4px solid #1a3a5c !important; border-radius:12px;">
                 <div class="card-body py-4">
-                    <div style="font-size:2rem;">&#x1F4E6;</div>
-                    <h5 class="card-title mt-1 text-muted" style="font-size:.9rem;">PRODUCTOS EN CAT&Aacute;LOGO</h5>
+                    <div style="font-size:2rem;">📦</div>
+                    <h5 class="card-title mt-1 text-muted" style="font-size:.9rem;">PRODUCTOS EN CATÁLOGO</h5>
                     <p class="display-5 fw-bold" style="color:#1a3a5c;">{{ total_productos }}</p>
-                    <a href="{{ url_for('productos') }}" class="btn btn-sm btn-outline-primary">Ver cat&aacute;logo</a>
+                    <a href="{{ url_for('productos') }}" class="btn btn-sm btn-outline-primary">Ver catálogo</a>
                 </div>
             </div>
         </div>
@@ -54,7 +54,7 @@
             <div class="card text-center border-0 shadow-sm h-100"
                  style="border-top: 4px solid #2e7d32 !important; border-radius:12px;">
                 <div class="card-body py-4">
-                    <div style="font-size:2rem;">&#x1F6D2;</div>
+                    <div style="font-size:2rem;">🛒</div>
                     <h5 class="card-title mt-1 text-muted" style="font-size:.9rem;">VENTAS DE HOY</h5>
                     <p class="display-5 fw-bold" style="color:#2e7d32;">{{ ventas_hoy }}</p>
                     <a href="{{ url_for('caja') }}" class="btn btn-sm btn-outline-success">Ir a caja</a>
@@ -65,7 +65,7 @@
             <div class="card text-center border-0 shadow-sm h-100"
                  style="border-top: 4px solid #b8860b !important; border-radius:12px;">
                 <div class="card-body py-4">
-                    <div style="font-size:2rem;">&#x1F4B5;</div>
+                    <div style="font-size:2rem;">💵</div>
                     <h5 class="card-title mt-1 text-muted" style="font-size:.9rem;">TOTAL VENDIDO HOY</h5>
                     <p class="display-5 fw-bold" style="color:#b8860b;">${{ "%.2f"|format(total_hoy) }}</p>
                     <a href="{{ url_for('reportes') }}" class="btn btn-sm btn-outline-secondary">Ver reportes</a>
@@ -77,16 +77,19 @@
 </div>
 
 <script>
-    var DIAS = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
-    var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 
     function actualizarReloj() {
-        var ahora = new Date();
-        var h = String(ahora.getHours()).padStart(2,'0');
-        var m = String(ahora.getMinutes()).padStart(2,'0');
-        var s = String(ahora.getSeconds()).padStart(2,'0');
-        document.getElementById('reloj').textContent = h + ':' + m + ':' + s;
-        var fecha = DIAS[ahora.getDay()] + ', ' + ahora.getDate() + ' de ' + MESES[ahora.getMonth()] + ' de ' + ahora.getFullYear();
+        const ahora = new Date();
+        let h = ahora.getHours();
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        h = h % 12 || 12;
+        const m = String(ahora.getMinutes()).padStart(2,'0');
+        const s = String(ahora.getSeconds()).padStart(2,'0');
+        document.getElementById('reloj').textContent = `${h}:${m}:${s} ${ampm}`;
+        const dia = DIAS[ahora.getDay()];
+        const fecha = `${dia}, ${ahora.getDate()} de ${MESES[ahora.getMonth()]} de ${ahora.getFullYear()}`;
         document.getElementById('fecha').textContent = fecha;
     }
     actualizarReloj();
