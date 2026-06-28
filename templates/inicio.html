@@ -2,37 +2,35 @@
 {% block titulo %}Inicio — ML Motors{% endblock %}
 {% block contenido %}
 
-<div class="content-card mb-4">
-
     <!-- Encabezado: ML MOTORS + reloj -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <h1 style="font-family:'Oswald',sans-serif; font-size:3rem; color:#cc0000; letter-spacing:4px; margin:0; line-height:1; text-shadow: 0 0 20px rgba(204,0,0,0.4);">
+        <h1 style="font-family:'Oswald',sans-serif; font-size:3rem; color:#ffffff; letter-spacing:4px; margin:0; line-height:1;">
             ML MOTORS
         </h1>
         <div class="text-end">
             <div id="reloj" style="font-size:2rem; font-weight:700; color:#ffffff; line-height:1.1; font-family:'Oswald',sans-serif; letter-spacing:2px;"></div>
-            <div id="fecha" style="font-size:0.9rem; color:#5a7a9a; letter-spacing:.5px;"></div>
+            <div id="fecha" style="font-size:0.9rem; color:#6a8aaa; letter-spacing:.5px;"></div>
         </div>
     </div>
 
     <!-- Indicador de turno -->
     {% if turno %}
     <div class="d-flex align-items-center gap-3 mb-4 px-3 py-2"
-         style="background:#0a1a0a; border:1px solid #1a5c2e; border-left:4px solid #28a745; border-radius:6px;">
-        <div style="color:#7acc8a; font-size:.95rem;">
+         style="background:rgba(26,92,46,0.25); border:1px solid #1a5c2e; border-left:4px solid #3acc5a; border-radius:6px;">
+        <div style="color:#90d8a8; font-size:.95rem;">
             <strong style="color:#5ccc7a;">&#9646; TURNO ACTIVO</strong>
             &nbsp;&mdash;&nbsp; Apertura: {{ turno['fecha_apertura'] }}
             &nbsp;&middot;&nbsp; Fondo: ${{ "%.2f"|format(turno['monto_inicial']) }}
-            &nbsp;&middot;&nbsp; <a href="{{ url_for('cerrar_caja') }}" style="color:#28a745; font-weight:600;">Cerrar caja</a>
+            &nbsp;&middot;&nbsp; <a href="{{ url_for('cerrar_caja') }}" style="color:#3acc5a; font-weight:600;">Cerrar caja</a>
         </div>
     </div>
     {% else %}
     <div class="d-flex align-items-center gap-3 mb-4 px-3 py-2"
-         style="background:#1a0a0a; border:1px solid #5c1a1a; border-left:4px solid #cc0000; border-radius:6px;">
-        <div style="color:#cc7a7a; font-size:.95rem;">
-            <strong style="color:#e87070;">&#9646; CAJA CERRADA</strong>
+         style="background:rgba(42,90,154,0.20); border:1px solid #2a5a9a; border-left:4px solid #5a9adc; border-radius:6px;">
+        <div style="color:#90b8e0; font-size:.95rem;">
+            <strong style="color:#c0d8f0;">&#9646; CAJA CERRADA</strong>
             &nbsp;&mdash;&nbsp; No hay ning&uacute;n turno activo.
-            &nbsp;&middot;&nbsp; <a href="{{ url_for('caja') }}" style="color:#cc0000; font-weight:600;">Abrir caja</a>
+            &nbsp;&middot;&nbsp; <a href="{{ url_for('caja') }}" style="color:#5a9adc; font-weight:600;">Abrir caja</a>
         </div>
     </div>
     {% endif %}
@@ -40,41 +38,36 @@
     <!-- Tarjetas de resumen -->
     <div class="row g-3">
         <div class="col-md-4">
-            <div class="card text-center h-100"
-                 style="border-top:3px solid #cc0000; border-radius:6px;">
+            <div class="card text-center h-100" style="border-top:3px solid #3a7acc; border-radius:6px;">
                 <div class="card-body py-4">
-                    <div style="font-size:1.8rem; color:#4a5a6a;">&#x1F4E6;</div>
-                    <h5 class="card-title mt-2" style="font-size:.8rem; letter-spacing:1.5px; color:#5a6a7a;">PRODUCTOS EN CAT&Aacute;LOGO</h5>
-                    <p class="display-5 fw-bold" style="color:#cc0000; font-family:'Oswald',sans-serif;">{{ total_productos }}</p>
+                    <div style="font-size:1.8rem;">&#x1F4E6;</div>
+                    <h5 class="card-title mt-2">PRODUCTOS EN CAT&Aacute;LOGO</h5>
+                    <p class="display-5 fw-bold" style="color:#5aaae8; font-family:'Oswald',sans-serif;">{{ total_productos }}</p>
                     <a href="{{ url_for('productos') }}" class="btn btn-sm btn-outline-primary">Ver cat&aacute;logo</a>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card text-center h-100"
-                 style="border-top:3px solid #3a5a3a; border-radius:6px;">
+            <div class="card text-center h-100" style="border-top:3px solid #2a7a4a; border-radius:6px;">
                 <div class="card-body py-4">
-                    <div style="font-size:1.8rem; color:#4a5a6a;">&#x1F6D2;</div>
-                    <h5 class="card-title mt-2" style="font-size:.8rem; letter-spacing:1.5px; color:#5a6a7a;">VENTAS DE HOY</h5>
-                    <p class="display-5 fw-bold" style="color:#5ccc7a; font-family:'Oswald',sans-serif;">{{ ventas_hoy }}</p>
+                    <div style="font-size:1.8rem;">&#x1F6D2;</div>
+                    <h5 class="card-title mt-2">VENTAS DE HOY</h5>
+                    <p class="display-5 fw-bold" style="color:#3acc5a; font-family:'Oswald',sans-serif;">{{ ventas_hoy }}</p>
                     <a href="{{ url_for('caja') }}" class="btn btn-sm btn-outline-success">Ir a caja</a>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
-            <div class="card text-center h-100"
-                 style="border-top:3px solid #4a4a1a; border-radius:6px;">
+            <div class="card text-center h-100" style="border-top:3px solid #4a5a6a; border-radius:6px;">
                 <div class="card-body py-4">
-                    <div style="font-size:1.8rem; color:#4a5a6a;">&#x1F4B5;</div>
-                    <h5 class="card-title mt-2" style="font-size:.8rem; letter-spacing:1.5px; color:#5a6a7a;">TOTAL VENDIDO HOY</h5>
-                    <p class="display-5 fw-bold" style="color:#ccaa00; font-family:'Oswald',sans-serif;">${{ "%.2f"|format(total_hoy) }}</p>
+                    <div style="font-size:1.8rem;">&#x1F4B5;</div>
+                    <h5 class="card-title mt-2">TOTAL VENDIDO HOY</h5>
+                    <p class="display-5 fw-bold" style="color:#e0e8f4; font-family:'Oswald',sans-serif;">${{ "%.2f"|format(total_hoy) }}</p>
                     <a href="{{ url_for('reportes') }}" class="btn btn-sm btn-outline-secondary">Ver reportes</a>
                 </div>
             </div>
         </div>
     </div>
-
-</div>
 
 <script>
     const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];

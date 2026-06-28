@@ -20,31 +20,31 @@
             content: '';
             position: fixed;
             inset: 0;
-            background: rgba(4, 6, 12, 0.60);
+            background: rgba(6, 14, 30, 0.65);
             z-index: 0;
             pointer-events: none;
         }
         /* Navbar */
         .navbar {
-            background-color: #0a0c10 !important;
-            border-bottom: 2px solid #cc0000;
+            background-color: #071224 !important;
+            border-bottom: 2px solid #2a5a9a;
             position: relative;
             z-index: 10;
         }
         .navbar-brand {
             font-family: 'Oswald', sans-serif;
             font-size: 1.4rem;
-            color: #cc0000 !important;
+            color: #ffffff !important;
             letter-spacing: 2px;
         }
-        .nav-link { color: #ffffff !important; font-size: .88rem; letter-spacing: .4px; }
+        .nav-link { color: #c0cfe0 !important; font-size: .88rem; letter-spacing: .4px; }
         .nav-link:hover { color: #ffffff !important; }
         /* Layout */
         .main-wrapper { position: relative; z-index: 1; }
         .content-card {
-            background: rgba(14, 20, 34, 0.94);
-            border: 1px solid #1e2d44;
-            border-top: 3px solid #cc0000;
+            background: rgba(8, 18, 40, 0.93);
+            border: 1px solid #1a3a6a;
+            border-top: 3px solid #3a7acc;
             backdrop-filter: blur(6px);
             border-radius: 8px;
             padding: 2rem;
@@ -52,72 +52,74 @@
             color: #e8f0fa;
         }
         /* Tipografia */
-        h1, h2, h3, h4, h5 { color: #e4ecf7; }
-        p, td, th, label, .form-text { color: #d8e4f0; }
-        .text-muted { color: #4e6070 !important; }
+        h1, h2, h3, h4, h5 { color: #f0f6ff; }
+        p, td, th, label, .form-text { color: #c0d0e4; }
+        .text-muted { color: #6a82a0 !important; }
         /* Tablas */
-        .table { color: #e0eaf4; border-color: #1e2d44; }
-        .table thead th { background-color: #0d1120; color: #b0c0d4; border-color: #1e2d44; }
+        .table { color: #d0e0f0; border-color: #1a3060; }
+        .table thead th { background-color: #071224; color: #8aaacа; border-color: #1a3060; }
         .table-striped > tbody > tr:nth-of-type(odd) > * {
-            background-color: rgba(255,255,255,0.03); color: #e0eaf4;
+            background-color: rgba(42,90,154,0.08); color: #d0e0f0;
         }
-        .table-secondary { background-color: rgba(255,255,255,0.04) !important; color: #4e6070 !important; }
-        .table > :not(caption) > * > * { border-bottom-color: #1e2d44; }
+        .table-secondary { background-color: rgba(255,255,255,0.03) !important; color: #6a82a0 !important; }
+        .table > :not(caption) > * > * { border-bottom-color: #1a3060; }
         /* Formularios */
         .form-control, .form-select {
-            background-color: #0d1120;
-            border: 1px solid #2a3a50;
+            background-color: #071224;
+            border: 1px solid #1a3a6a;
             color: #e8f0fa;
         }
         .form-control:focus, .form-select:focus {
-            background-color: #0d1120;
-            border-color: #cc0000;
+            background-color: #071224;
+            border-color: #3a7acc;
             color: #ffffff;
-            box-shadow: 0 0 0 2px rgba(204,0,0,0.20);
+            box-shadow: 0 0 0 2px rgba(58,122,204,0.25);
         }
-        .form-control::placeholder { color: #3e5060; }
-        .form-label { color: #c0d0e0; }
+        .form-control::placeholder { color: #3a5070; }
+        .form-label { color: #a0b8d0; }
         /* Cards internas */
         .card {
-            background-color: #0d1120;
-            border: 1px solid #1e2d44;
+            background-color: #071224;
+            border: 1px solid #1a3060;
             color: #e8f0fa;
         }
-        .card-title { color: #6a7a8a; font-size: .8rem; letter-spacing: 1.5px; }
+        .card-title { color: #6a8aaa; font-size: .8rem; letter-spacing: 1.5px; }
         /* Botones */
-        .btn-primary    { background-color: #cc0000; border-color: #aa0000; color:#fff; }
-        .btn-primary:hover { background-color: #aa0000; border-color: #880000; }
-        .btn-outline-primary { color: #cc0000; border-color: #cc0000; }
-        .btn-outline-primary:hover { background-color: #cc0000; color: #fff; }
-        .btn-outline-secondary { color: #7a8a9a; border-color: #2a3a50; }
-        .btn-outline-secondary:hover { background-color: #1e2d44; color: #ccd6e8; border-color: #3a4a60; }
+        .btn-primary    { background-color: #2a5a9a; border-color: #1a4a8a; color:#fff; }
+        .btn-primary:hover { background-color: #1a4a8a; border-color: #0a3a7a; }
+        .btn-outline-primary { color: #5a9adc; border-color: #3a7acc; }
+        .btn-outline-primary:hover { background-color: #2a5a9a; color: #fff; border-color: #2a5a9a; }
+        .btn-outline-secondary { color: #8aaac0; border-color: #2a4060; }
+        .btn-outline-secondary:hover { background-color: #1a3060; color: #e8f0fa; border-color: #3a5a80; }
         .btn-success { background-color: #1a5c2e; border-color: #155226; color:#fff; }
         .btn-success:hover { background-color: #155226; }
         .btn-outline-success { color: #3acc5a; border-color: #3acc5a; }
         .btn-outline-success:hover { background-color: #1a5c2e; color: #fff; border-color: #1a5c2e; }
-        .btn-danger  { background-color: #8b0000; border-color: #6a0000; color:#fff; }
-        .btn-outline-danger  { color: #e05050; border-color: #e05050; }
-        .btn-outline-danger:hover { background-color: #8b0000; color: #fff; border-color: #8b0000; }
-        .btn-link    { color: #6a8aaa; }
+        .btn-danger  { background-color: #7a1a1a; border-color: #5a1010; color:#fff; }
+        .btn-outline-danger  { color: #e08080; border-color: #c06060; }
+        .btn-outline-danger:hover { background-color: #7a1a1a; color: #fff; border-color: #7a1a1a; }
+        .btn-link    { color: #5a9adc; }
         /* Badges */
-        .badge.bg-secondary { background-color: #2a3a50 !important; }
-        .badge.bg-info.text-dark { background-color: #1a3a60 !important; color: #80b0e0 !important; }
-        .badge.bg-warning.text-dark { background-color: #4a3a00 !important; color: #ccaa00 !important; }
-        .badge.bg-primary { background-color: #8b0000 !important; }
-        .badge.bg-light.text-dark { background-color: #2a3a50 !important; color: #8a9ab0 !important; }
+        .badge.bg-secondary { background-color: #2a4060 !important; }
+        .badge.bg-info.text-dark { background-color: #1a3a6a !important; color: #80b0e8 !important; }
+        .badge.bg-warning.text-dark { background-color: #3a3a10 !important; color: #c8b840 !important; }
+        .badge.bg-primary { background-color: #2a5a9a !important; }
+        .badge.bg-light.text-dark { background-color: #2a4060 !important; color: #a0b8d0 !important; }
+        .badge.bg-danger { background-color: #7a1a1a !important; }
+        .badge.bg-success { background-color: #1a5c2e !important; }
         /* Alerts */
         .alert { position: relative; z-index: 2; }
         .alert-success { background-color: #0a2010; border-color: #1a5c2e; color: #5ccc7a; }
-        .alert-danger  { background-color: #200a0a; border-color: #8b0000; color: #e08080; }
+        .alert-danger  { background-color: #200a0a; border-color: #7a1a1a; color: #e08080; }
         /* Modal */
-        .modal-content { background-color: #0d1120; border: 1px solid #2a3a50; color: #ccd6e8; }
-        .modal-header  { border-bottom-color: #1e2d44; }
-        .modal-footer  { border-top-color: #1e2d44; }
+        .modal-content { background-color: #071224; border: 1px solid #1a3a6a; color: #e8f0fa; }
+        .modal-header  { border-bottom-color: #1a3060; }
+        .modal-footer  { border-top-color: #1a3060; }
         .btn-close { filter: invert(1); }
         /* Misc */
-        .text-danger { color: #e05050 !important; }
+        .text-danger { color: #e08080 !important; }
         .text-success { color: #3acc5a !important; }
-        .text-warning { color: #ccaa00 !important; }
+        .text-warning { color: #c8b840 !important; }
     </style>
 </head>
 <body>
