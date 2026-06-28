@@ -219,12 +219,14 @@ def inicio():
         "SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS suma FROM ventas WHERE fecha LIKE ?",
         (datetime.now().strftime("%Y-%m-%d") + "%",),
     ).fetchone()
+    turno = obtener_turno_abierto(conn)
     conn.close()
     return render_template(
         "inicio.html",
         total_productos=total_productos,
         ventas_hoy=ventas_hoy["c"],
         total_hoy=ventas_hoy["suma"],
+        turno=turno,
     )
 
 
@@ -622,5 +624,4 @@ def reportes():
     )
 
 
-if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+i

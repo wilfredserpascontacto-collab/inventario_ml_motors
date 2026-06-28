@@ -1,35 +1,30 @@
 {% extends "base.html" %}
-{% block titulo %}Inicio - Inventario y Caja{% endblock %}
+{% block titulo %}Inicio — ML Motors{% endblock %}
 {% block contenido %}
-<h1 class="mb-4">Bienvenido</h1>
 
-<div class="row g-3">
-    <div class="col-md-4">
-        <div class="card text-center shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Productos en catálogo</h5>
-                <p class="display-6">{{ total_productos }}</p>
-                <a href="{{ url_for('productos') }}" class="btn btn-outline-primary">Ver catálogo</a>
-            </div>
+<div class="content-card mb-4">
+
+    <!-- Encabezado: ML MOTORS + reloj -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <h1 style="font-family:'Oswald',sans-serif; font-size:3rem; color:#c0000c; letter-spacing:3px; margin:0; line-height:1;">
+            ML MOTORS
+        </h1>
+        <div class="text-end">
+            <div id="reloj" style="font-size:2rem; font-weight:700; color:#1a3a5c; line-height:1.1;"></div>
+            <div id="fecha" style="font-size:0.95rem; color:#555;"></div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Ventas de hoy</h5>
-                <p class="display-6">{{ ventas_hoy }}</p>
-                <a href="{{ url_for('caja') }}" class="btn btn-outline-success">Ir a caja</a>
-            </div>
+
+    <!-- Indicador de turno -->
+    {% if turno %}
+    <div class="alert mb-4 d-flex align-items-center gap-2 py-2"
+         style="background:#e8f5e9; border:1.5px solid #43a047; border-radius:10px; color:#1b5e20;">
+        <span style="font-size:1.3rem;">🟢</span>
+        <div>
+            <strong>Turno activo</strong> — Caja abierta desde {{ turno['fecha_apertura'] }}
+            &nbsp;·&nbsp; Fondo inicial: ${{ "%.2f"|format(turno['monto_inicial']) }}
+            &nbsp;·&nbsp; <a href="{{ url_for('cerrar_caja') }}" class="text-success fw-semibold">Cerrar caja</a>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card text-center shadow-sm">
-            <div class="card-body">
-                <h5 class="card-title">Total vendido hoy</h5>
-                <p class="display-6">${{ "%.2f"|format(total_hoy) }}</p>
-                <a href="{{ url_for('reportes') }}" class="btn btn-outline-secondary">Ver reportes</a>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
+    {% else %}
+    <div class="alert mb-4 d-flex align-ite
