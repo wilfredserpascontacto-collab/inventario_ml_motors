@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block titulo %}Productos - Inventario y Caja{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Catálogo de productos y servicios</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('nuevo_producto') }}" class="btn btn-primary">+ Nuevo</a>
+        <a href="{{ url_for('salir_productos') }}" class="btn btn-outline-secondary">Salir del modo administrador</a>
+    </div>
+</div>
+
+<form method="get" class="mb-3 col-md-5 position-relative">
+    <div class="input-group">
+        <input type="text" name="q" id="buscador" class="form-control" placeholder="Buscar por código o nombre..."
+               value="{{ busqueda }}" autocomplete="off">
+        <button type="submit" class="btn btn-outline-primary">Buscar</button>
+        {% if busqueda %}
+        <a href="{{ url_for('productos') }}" class="btn btn-outline-secondary">Limpiar</a>
+        {% endif %}
+    </div>
+    <div id="sugerencias" class="list-group position-absolute w-100 shadow-sm" style="z-index: 1000; top: 100%;"></div>
+</form>
+
+<script>
+    const inputBuscador = document.getElementById('buscador');
+    const cajaSugerencias = document.getElementById('sugerencias');
+    let temporizador = null;
+
+    inputBuscador.addEventListener('input', () => {
+        clearTimeout(temporizador);
+        const texto = inputBuscador.value.trim();
+        if (texto.length < 2) {
+            cajaSugerencias.innerHTML = '';
+            return;
+        }
+        temporizador = setTimeout(() => buscarSugerencias(texto), 250);
+    });
+
+    function buscarSugerencias(texto) {
+        fetch('/api/buscar_productos?q=' + encodeURIComponent(texto))
+            .then(r => r.json())
+            .then(datos => mostrarSugerencias(datos.resultados));
+    }
+
+    function mostrarSugerencias(resultados) {
+        cajaSugerencias.innerHTML = '';
+        if (resultados.length === 0) {
+            cajaSugerencias.innerHTML = '<div class="list-group-item text-muted">Sin coincidencias</div>';
+            return;
+        }
+        resultados.forEach(p => {
+            const estado = p.tipo === 'servicio'
+                ? '<span class="badge bg-info text-dark">Servicio</span>'
+                : (p.stock > 0
+                    ? `<span class="badge bg-success">En stock: ${p.stock}</span>`
+                    : '<span class="badge bg-danger">Agotado</span>');
+            const item = document.createElement('a');
+            item.href = '/productos?q=' + encodeURIComponent(p.codigo || p.nombre);
+            item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            item.innerHTML = `<span><strong>${p.nombre}</strong> ${p.codigo ? '· ' + p.codigo : ''} — $${p.precio.toFixed(2)}</span>${estado}`;
+            cajaSugerencias.appendChild(item);
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#buscador') && !e.target.closest('#sugerencias')) {
+            cajaSugerencias.innerHTML = '';
+        }
+    });
+</script>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in productos %}
+        <tr>
+            <td>{{ p.codigo or '—' }}</td>
+            <td>{{ p.nombre }}</td>
+            <td>
+                {% if p.tipo == 'servicio' %}
+                    <span class="badge bg-info text-dark">Servicio</span>
+                {% else %}
+                    <span class="badge bg-secondary">Producto</span>
+                {% endif %}
+            </td>
+            <td>${{ "%.2f"|format(p.precio) }}</td>
+            <td>
+                {% if p.tipo == 'servicio' %}
+                    —
+                {% else %}
+                    {% if p.stock <= 0 %}
+                        <span class="text-danger fw-bold">{{ p.stock }} (agotado)</span>
+                    {% elif p.stock <= 5 %}
+                        <span class="text-warning fw-bold">{{ p.stock }} (bajo)</span>
+                    {% else %}
+                        {{ p.stock }}
+                    {% endif %}
+                {% endif %}
+            </td>
+            <td class="text-end">
+                <a href="{{ url_for('editar_producto', producto_id=p.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar{{ p.id }}">
+                    Eliminar
+                </button>
+
+                <!-- Modal: confirmar eliminación con contraseña de administrador -->
+                <div class="modal fade" id="modalEliminar{{ p.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                        <form method="post" action="{{ url_for('eliminar_producto', producto_id=p.id) }}" class="modal-content text-start">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Eliminar "{{ p.nombre }}"</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-danger">
+                                    Esta acción no se puede deshacer. Para confirmar,
+                                    ingresa la contraseña de administrador.
+                                </p>
+                                <div class="mb-3">
+                                    <label class="form-label">Contraseña de administrador</label>
+                                    <input type="password" name="contrasena" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <button type="submit" class="btn btn-danger">Confirmar eliminación</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted">Aún no hay productos. Agrega el primero con "+ Nuevo".</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

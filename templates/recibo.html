@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block titulo %}Recibo #{{ venta.id }}{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Recibo de venta #{{ venta.id }}</h1>
+    <a href="{{ url_for('caja') }}" class="btn btn-primary">Nueva venta</a>
+</div>
+
+<p class="text-muted">Fecha: {{ venta.fecha }}</p>
+
+{% if venta.cancelada %}
+<div class="alert alert-danger">
+    <strong>⚠ Esta venta fue CANCELADA</strong><br>
+    Motivo: {{ venta.motivo_cancelacion }}<br>
+    Fecha de cancelación: {{ venta.fecha_cancelacion }}<br>
+    El stock de los productos involucrados fue devuelto al inventario y esta venta no se contabiliza en los reportes.
+</div>
+{% endif %}
+
+<table class="table {{ 'table-secondary' if venta.cancelada else '' }}">
+    <thead>
+        <tr>
+            <th>Producto / Servicio</th>
+            <th>Cantidad</th>
+            <th>Precio unitario</th>
+            <th>Subtotal</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in detalles %}
+        <tr>
+            <td>{{ d.nombre_producto }}</td>
+            <td>{{ d.cantidad }}</td>
+            <td>${{ "%.2f"|format(d.precio_unitario) }}</td>
+            <td>${{ "%.2f"|format(d.subtotal) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="3" class="text-end">Total</th>
+            <th>${{ "%.2f"|format(venta.total) }}</th>
+        </tr>
+        {% if venta.monto_recibido is not none %}
+        <tr>
+            <th colspan="3" class="text-end fw-normal text-muted">Efectivo recibido</th>
+            <th class="fw-normal text-muted">${{ "%.2f"|format(venta.monto_recibido) }}</th>
+        </tr>
+        <tr>
+            <th colspan="3" class="text-end">Cambio entregado</th>
+            <th>${{ "%.2f"|format(venta.cambio) }}</th>
+        </tr>
+        {% endif %}
+    </tfoot>
+</table>
+
+<div class="d-flex gap-2">
+    <button onclick="window.print()" class="btn btn-outline-secondary">Imprimir recibo</button>
+
+    {% if not venta.cancelada %}
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalCancelar">
+        Cancelar venta
+    </button>
+    {% endif %}
+</div>
+
+{% if not venta.cancelada %}
+<!-- Modal para confirmar cancelación con permiso de administrador -->
+<div class="modal fade" id="modalCancelar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" action="{{ url_for('cancelar_venta', venta_id=venta.id) }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cancelar venta #{{ venta.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-danger">
+                    Esta acción devolverá el stock de los productos al inventario y marcará
+                    la venta como cancelada. Requiere autorización de un administrador.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">Motivo de la cancelación</label>
+                    <input type="text" name="motivo" class="form-control" required
+                           placeholder="Ej. El cliente se arrepintió, error al cobrar, etc.">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Contraseña de administrador</label>
+                    <input type="password" name="contrasena" class="form-control" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="submit" class="btn btn-danger">Confirmar cancelación</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titulo %}Acceso de administrador{% endblock %}
+{% block contenido %}
+<h1 class="mb-4">🔒 Acceso de administrador</h1>
+
+<div class="card shadow-sm" style="max-width: 420px;">
+    <div class="card-body">
+        <p class="text-muted small">
+            La sección de catálogo de productos y servicios es exclusiva del
+            administrador. Ingresa la contraseña de administrador para continuar.
+        </p>
+        <form method="post">
+            <div class="mb-3">
+                <label class="form-label">Contraseña de administrador</label>
+                <input type="password" name="contrasena" class="form-control" required autofocus>
+            </div>
+            <button type="submit" class="btn btn-primary">Entrar</button>
+            <a href="{{ url_for('inicio') }}" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

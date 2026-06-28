@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+inventario.db
+.git/
+*.bat
+generar_documento.py
+*.pdf

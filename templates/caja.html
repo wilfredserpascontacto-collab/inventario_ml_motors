@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block titulo %}Caja - Inventario y Caja{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Punto de venta (Caja)</h1>
+    {% if turno %}
+    <a href="{{ url_for('cerrar_caja') }}" class="btn btn-outline-danger">Cerrar caja</a>
+    {% endif %}
+</div>
+
+{% if not turno %}
+<div class="card shadow-sm" style="max-width: 480px;">
+    <div class="card-body">
+        <h5 class="card-title">La caja está cerrada</h5>
+        <p class="text-muted small">
+            Antes de registrar ventas debes abrir la caja indicando el fondo
+            inicial (el efectivo con el que comienza el turno).
+        </p>
+        <form method="post" action="{{ url_for('abrir_caja') }}">
+            <div class="mb-3">
+                <label class="form-label">Fondo inicial (efectivo en caja)</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="number" name="monto_inicial" class="form-control" min="0" step="0.01" value="0" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Notas (opcional)</label>
+                <input type="text" name="notas_apertura" class="form-control" placeholder="Ej. Turno de la mañana">
+            </div>
+            <button type="submit" class="btn btn-success">Abrir caja</button>
+        </form>
+    </div>
+</div>
+
+{% else %}
+
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+    <div>
+        <strong>Caja abierta</strong> desde {{ turno.fecha_apertura }}
+        — fondo inicial: ${{ "%.2f"|format(turno.monto_inicial) }}
+        {% if turno.notas_apertura %}<br><span class="small">Notas: {{ turno.notas_apertura }}</span>{% endif %}
+    </div>
+    <a href="{{ url_for('turnos') }}" class="btn btn-sm btn-outline-secondary">Ver cortes de caja</a>
+</div>
+
+{% if not productos_disponibles %}
+<p class="text-muted">No hay productos disponibles para vender. Agrega productos con stock o servicios en el catálogo.</p>
+{% else %}
+
+<div class="position-relative col-md-6 mb-4">
+    <label class="form-label">Buscar producto o servicio para agregar a la venta</label>
+    <input type="text" id="buscador" class="form-control form-control-lg"
+           placeholder="Escribe el nombre o código... ej. 'filtro camion 5080'" autocomplete="off">
+    <div id="sugerencias" class="list-group position-absolute w-100 shadow-sm" style="z-index: 1000;"></div>
+</div>
+
+<form method="post" action="{{ url_for('vender') }}" id="form-venta">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Producto / Servicio</th>
+                <th>Precio</th>
+                <th>Disponible</th>
+                <th style="width: 140px;">Cantidad</th>
+                <th>Subtotal</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="carrito-cuerpo">
+            <tr id="carrito-vacio">
+                <td colspan="6" class="text-center text-muted">
+                    Usa el buscador de arriba para agregar productos o servicios a la venta.
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="row justify-content-end">
+        <div class="col-md-5">
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fs-5">Total a cobrar:</span>
+                        <span class="fs-5 fw-bold" id="total">$0.00</span>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Efectivo que entrega el cliente</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" name="monto_recibido" id="monto_recibido"
+                                   class="form-control form-control-lg" min="0" step="0.01"
+                                   placeholder="0.00" autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fs-5">Cambio / vuelto:</span>
+                        <span class="fs-4 fw-bold" id="cambio">$0.00</span>
+                    </div>
+                    <div id="aviso-pago" class="small mt-1"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-success btn-lg" id="btn-cobrar" disabled>Cobrar / Registrar venta</button>
+    </div>
+</form>
+
+<script>
+    const inputBuscador = document.getElementById('buscador');
+    const cajaSugerencias = document.getElementById('sugerencias');
+    const cuerpoCarrito = document.getElementById('carrito-cuerpo');
+    const filaVacia = document.getElementById('carrito-vacio');
+    const btnCobrar = document.getElementById('btn-cobrar');
+    const formVenta = document.getElementById('form-venta');
+
+    // carrito[productoId] = { nombre, codigo, precio, disponible, cantidad }
+    const carrito = {};
+    let temporizador = null;
+    let totalActual = 0;
+    const inputRecibido = document.getElementById('monto_recibido');
+    const spanCambio = document.getElementById('cambio');
+    const avisoPago = document.getElementById('aviso-pago');
+
+    inputBuscador.addEventListener('input', () => {
+        clearTimeout(temporizador);
+        const texto = inputBuscador.value.trim();
+        if (texto.length < 2) {
+            cajaSugerencias.innerHTML = '';
+            return;
+        }
+        temporizador = setTimeout(() => buscarSugerencias(texto), 250);
+    });
+
+    function buscarSugerencias(texto) {
+        fetch('/api/buscar_productos?q=' + encodeURIComponent(texto) + '&disponibles=1')
+            .then(r => r.json())
+            .then(datos => mostrarSugerencias(datos.resultados));
+    }
+
+    function mostrarSugerencias(resultados) {
+        cajaSugerencias.innerHTML = '';
+        if (resultados.length === 0) {
+            cajaSugerencias.innerHTML = '<div class="list-group-item text-muted">Sin coincidencias disponibles para vender</div>';
+            return;
+        }
+        resultados.forEach(p => {
+            const estado = p.tipo === 'servicio'
+                ? '<span class="badge bg-info text-dark">Servicio</span>'
+                : `<span class="badge bg-success">En stock: ${p.stock}</span>`;
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
+            item.innerHTML = `<span><strong>${p.nombre}</strong> ${p.codigo ? '· ' + p.codigo : ''} — $${p.precio.toFixed(2)}</span>${estado}`;
+            item.addEventListener('click', () => {
+                agregarAlCarrito(p);
+                inputBuscador.value = '';
+                cajaSugerencias.innerHTML = '';
+                inputBuscador.focus();
+            });
+            cajaSugerencias.appendChild(item);
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#buscador') && !e.target.closest('#sugerencias')) {
+            cajaSugerencias.innerHTML = '';
+        }
+    });
+
+    function agregarAlCarrito(p) {
+        if (carrito[p.id]) {
+            if (p.tipo === 'producto' && carrito[p.id].cantidad >= p.stock) {
+                alert(`Solo hay ${p.stock} unidades disponibles de "${p.nombre}".`);
+                return;
+            }
+            carrito[p.id].cantidad += 1;
+        } else {
+            carrito[p.id] = {
+                id: p.id,
+                nombre: p.nombre,
+                codigo: p.codigo,
+                tipo: p.tipo,
+                precio: p.precio,
+                stock: p.stock,
+                cantidad: 1,
+            };
+        }
+        dibujarCarrito();
+    }
+
+    function quitarDelCarrito(id) {
+        delete carrito[id];
+        dibujarCarrito();
+    }
+
+    function cambiarCantidad(id, valor) {
+        const item = carrito[id];
+        if (!item) return;
+        let cantidad = parseInt(valor, 10) || 0;
+        if (cantidad < 0) cantidad = 0;
+        if (item.tipo === 'producto' && cantidad > item.stock) {
+            alert(`Solo hay ${item.stock} unidades disponibles de "${item.nombre}".`);
+            cantidad = item.stock;
+        }
+        item.cantidad = cantidad;
+        dibujarCarrito();
+    }
+
+    function dibujarCarrito() {
+        const ids = Object.keys(carrito);
+        cuerpoCarrito.innerHTML = '';
+
+        if (ids.length === 0) {
+            cuerpoCarrito.appendChild(filaVacia);
+            document.getElementById('total').textContent = '$0.00';
+            totalActual = 0;
+            actualizarCambio();
+            return;
+        }
+
+        let total = 0;
+        ids.forEach(id => {
+            const item = carrito[id];
+            const subtotal = item.precio * item.cantidad;
+            total += subtotal;
+
+            const fila = document.createElement('tr');
+            fila.innerHTML = `
+                <td>
+                    ${item.nombre} ${item.codigo ? '<span class="text-muted small">(' + item.codigo + ')</span>' : ''}
+                    ${item.tipo === 'servicio' ? '<span class="badge bg-info text-dark">Servicio</span>' : ''}
+                </td>
+                <td>$${item.precio.toFixed(2)}</td>
+                <td>${item.tipo === 'servicio' ? '—' : item.stock}</td>
+                <td>
+                    <input type="number" min="0" ${item.tipo === 'producto' ? `max="${item.stock}"` : ''}
+                           value="${item.cantidad}" class="form-control input-cantidad" data-id="${id}">
+                </td>
+                <td>$${subtotal.toFixed(2)}</td>
+                <td><button type="button" class="btn btn-sm btn-outline-danger btn-quitar" data-id="${id}">Quitar</button></td>
+            `;
+            cuerpoCarrito.appendChild(fila);
+        });
+
+        cuerpoCarrito.querySelectorAll('.input-cantidad').forEach(input => {
+            input.addEventListener('input', (e) => cambiarCantidad(e.target.dataset.id, e.target.value));
+        });
+        cuerpoCarrito.querySelectorAll('.btn-quitar').forEach(boton => {
+            boton.addEventListener('click', (e) => quitarDelCarrito(e.target.dataset.id));
+        });
+
+        document.getElementById('total').textContent = '$' + total.toFixed(2);
+        totalActual = total;
+        actualizarCambio();
+    }
+
+    function actualizarCambio() {
+        const recibido = parseFloat(inputRecibido.value);
+        const hayRecibido = !isNaN(recibido) && inputRecibido.value.trim() !== '';
+        const carritoTieneAlgo = Object.keys(carrito).length > 0
+            && Object.values(carrito).some(item => item.cantidad > 0)
+            && totalActual > 0;
+
+        if (!hayRecibido) {
+            spanCambio.textContent = '$0.00';
+            spanCambio.className = 'fs-4 fw-bold';
+            avisoPago.textContent = '';
+            btnCobrar.disabled = true;
+            return;
+        }
+
+        const cambio = recibido - totalActual;
+        spanCambio.textContent = '$' + cambio.toFixed(2);
+
+        if (cambio < 0) {
+            spanCambio.className = 'fs-4 fw-bold text-danger';
+            avisoPago.innerHTML = '<span class="text-danger">El efectivo entregado es menor que el total. Verifica el monto antes de cobrar.</span>';
+            btnCobrar.disabled = true;
+        } else {
+            spanCambio.className = 'fs-4 fw-bold text-success';
+            avisoPago.innerHTML = cambio > 0
+                ? `<span class="text-muted">Entrega $${cambio.toFixed(2)} de cambio al cliente.</span>`
+                : '<span class="text-muted">Pago exacto, no hay que dar cambio.</span>';
+            btnCobrar.disabled = !carritoTieneAlgo;
+        }
+    }
+
+    inputRecibido.addEventListener('input', actualizarCambio);
+
+    formVenta.addEventListener('submit', (e) => {
+        const recibido = parseFloat(inputRecibido.value);
+        if (isNaN(recibido) || recibido < totalActual) {
+            e.preventDefault();
+            alert('El efectivo recibido debe ser igual o mayor al total a cobrar.');
+            return;
+        }
+
+        // Generar los campos ocultos producto_id[] y cantidad[] a partir del carrito
+        formVenta.querySelectorAll('input[name="producto_id"], input[name="cantidad"]').forEach(el => el.remove());
+        Object.values(carrito).forEach(item => {
+            if (item.cantidad > 0) {
+                const campoId = document.createElement('input');
+                campoId.type = 'hidden';
+                campoId.name = 'producto_id';
+                campoId.value = item.id;
+                formVenta.appendChild(campoId);
+
+                const campoCantidad = document.createElement('input');
+                campoCantidad.type = 'hidden';
+                campoCantidad.name = 'cantidad';
+                campoCantidad.value = item.cantidad;
+                formVenta.appendChild(campoCantidad);
+            }
+        });
+    });
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}

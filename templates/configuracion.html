@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Configuración - Inventario y Caja{% endblock %}
+{% block contenido %}
+<h1 class="mb-4">⚙ Configuración</h1>
+
+<div class="card shadow-sm" style="max-width: 480px;">
+    <div class="card-body">
+        <h5 class="card-title">Cambiar contraseña de administrador</h5>
+        <p class="text-muted small">
+            Esta contraseña se solicita para autorizar acciones sensibles, como
+            cancelar/anular una venta.
+        </p>
+        <form method="post">
+            <div class="mb-3">
+                <label class="form-label">Contraseña actual</label>
+                <input type="password" name="contrasena_actual" class="form-control" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Nueva contraseña</label>
+                <input type="password" name="contrasena_nueva" class="form-control" required minlength="4">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Confirmar nueva contraseña</label>
+                <input type="password" name="contrasena_confirmar" class="form-control" required minlength="4">
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar cambios</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
