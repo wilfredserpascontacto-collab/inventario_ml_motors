@@ -20,66 +20,65 @@
             content: '';
             position: fixed;
             inset: 0;
-            background: rgba(255, 255, 255, 0.30);
+            background: rgba(5, 8, 15, 0.72);
             z-index: 0;
             pointer-events: none;
         }
+        /* ── Navbar ── */
         .navbar {
-            background-color: #1a3a5c !important;
+            background-color: #0a0c10 !important;
+            border-bottom: 2px solid #cc0000;
             position: relative;
             z-index: 10;
         }
         .navbar-brand {
             font-family: 'Oswald', sans-serif;
             font-size: 1.4rem;
-            color: #e8e8e8 !important;
-            letter-spacing: 1px;
+            color: #cc0000 !important;
+            letter-spacing: 2px;
         }
-        .main-wrapper {
-            position: relative;
-            z-index: 1;
-        }
+        .nav-link { color: #b0b8c8 !important; font-size: .9rem; letter-spacing: .5px; }
+        .nav-link:hover { color: #ffffff !important; }
+
+        /* ── Contenedor principal ── */
+        .main-wrapper { position: relative; z-index: 1; }
         .content-card {
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(6px);
-            border-radius: 16px;
+            background: rgba(10, 13, 20, 0.93);
+            border: 1px solid #1e2a3a;
+            border-top: 3px solid #cc0000;
+            backdrop-filter: blur(8px);
+            border-radius: 8px;
             padding: 2rem;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+            color: #d0d8e8;
         }
-        .alert { position: relative; z-index: 2; }
-    </style>
-</head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
-        <div class="container">
-            <a class="navbar-brand" href="{{ url_for('inicio') }}">🚛 ML MOTORS</a>
-            <div class="navbar-nav">
-                <a class="nav-link" href="{{ url_for('inicio') }}">Inicio</a>
-                <a class="nav-link" href="{{ url_for('productos') }}">Productos</a>
-                <a class="nav-link" href="{{ url_for('caja') }}">Caja</a>
-                <a class="nav-link" href="{{ url_for('turnos') }}">Cortes de caja</a>
-                <a class="nav-link" href="{{ url_for('reportes') }}">Reportes</a>
-                <a class="nav-link" href="{{ url_for('configuracion') }}">⚙ Configuración</a>
-            </div>
-        </div>
-    </nav>
 
-    <div class="container main-wrapper">
-        {% with mensajes = get_flashed_messages(with_categories=true) %}
-            {% if mensajes %}
-                {% for categoria, mensaje in mensajes %}
-                    <div class="alert {{ 'alert-danger' if categoria == 'error' else 'alert-success' }}">
-                        {{ mensaje }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        /* ── Texto general ── */
+        h1, h2, h3, h4, h5 { color: #e8edf5; }
+        p, td, th, label, .form-text { color: #9aaabb; }
+        .text-muted { color: #5a6a7a !important; }
 
-        <div class="content-card">
-            {% block contenido %}{% endblock %}
-        </div>
-    </div>
+        /* ── Tablas ── */
+        .table { color: #c0ccd8; border-color: #1e2a3a; }
+        .table thead { background-color: #0d1117; color: #9aaabb; }
+        .table-striped > tbody > tr:nth-of-type(odd) > * {
+            background-color: rgba(255,255,255,0.03); color: #c0ccd8;
+        }
+        .table-dark { background-color: #0d1117 !important; }
+        .table-secondary { background-color: rgba(255,255,255,0.04) !important; color: #5a6a7a !important; }
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+        /* ── Formularios ── */
+        .form-control, .form-select {
+            background-color: #0d1117;
+            border: 1px solid #2a3a4a;
+            color: #d0d8e8;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #0d1117;
+            border-color: #cc0000;
+            color: #ffffff;
+            box-shadow: 0 0 0 2px rgba(204,0,0,0.25);
+        }
+        .form-control::placeholder { color: #4a5a6a; }
+
+        /* ── Tarjetas internas ─
