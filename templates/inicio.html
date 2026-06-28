@@ -86,4 +86,14 @@
         const ampm = h >= 12 ? 'PM' : 'AM';
         h = h % 12 || 12;
         const m = String(ahora.getMinutes()).padStart(2,'0');
-        const s = String(ahora.getSeconds()
+        const s = String(ahora.getSeconds()).padStart(2,'0');
+        document.getElementById('reloj').textContent = `${h}:${m}:${s} ${ampm}`;
+        const dia = DIAS[ahora.getDay()];
+        const fecha = `${dia}, ${ahora.getDate()} de ${MESES[ahora.getMonth()]} de ${ahora.getFullYear()}`;
+        document.getElementById('fecha').textContent = fecha;
+    }
+    actualizarReloj();
+    setInterval(actualizarReloj, 1000);
+</script>
+
+{% endblock %}
