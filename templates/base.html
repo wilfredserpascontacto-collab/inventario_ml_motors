@@ -46,4 +46,40 @@
             padding: 2rem;
             box-shadow: 0 8px 32px rgba(0,0,0,0.12);
         }
- 
+        .alert { position: relative; z-index: 2; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('inicio') }}">🚛 ML MOTORS</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="{{ url_for('inicio') }}">Inicio</a>
+                <a class="nav-link" href="{{ url_for('productos') }}">Productos</a>
+                <a class="nav-link" href="{{ url_for('caja') }}">Caja</a>
+                <a class="nav-link" href="{{ url_for('turnos') }}">Cortes de caja</a>
+                <a class="nav-link" href="{{ url_for('reportes') }}">Reportes</a>
+                <a class="nav-link" href="{{ url_for('configuracion') }}">⚙ Configuración</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container main-wrapper">
+        {% with mensajes = get_flashed_messages(with_categories=true) %}
+            {% if mensajes %}
+                {% for categoria, mensaje in mensajes %}
+                    <div class="alert {{ 'alert-danger' if categoria == 'error' else 'alert-success' }}">
+                        {{ mensaje }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="content-card">
+            {% block contenido %}{% endblock %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
