@@ -1,10 +1,13 @@
+import io
 import os
 import sqlite3
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session
+from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
 from werkzeug.security import generate_password_hash, check_password_hash
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
 
 CONTRASENA_ADMIN_POR_DEFECTO = "admin123"
 
@@ -67,6 +70,16 @@ def migrar_db():
         conn.execute("ALTER TABLE ventas ADD COLUMN monto_recibido REAL")
     if "cambio" not in columnas_ventas:
         conn.execute("ALTER TABLE ventas ADD COLUMN cambio REAL")
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS historial_productos ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+        "producto_id INTEGER NOT NULL, "
+        "nombre_producto TEXT NOT NULL, "
+        "campo TEXT NOT NULL, "
+        "valor_anterior TEXT, "
+        "valor_nuevo TEXT, "
+        "fecha TEXT NOT NULL)"
+    )
     conn.commit()
     conn.close()
 
@@ -295,6 +308,21 @@ def editar_producto(producto_id):
         precio = float(request.form["precio"] or 0)
         stock = int(request.form["stock"] or 0) if tipo == "producto" else 0
 
+        fecha_cambio = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        campos = [
+            ("codigo",  str(item["codigo"] or ""), codigo),
+            ("nombre",  item["nombre"],             nombre),
+            ("tipo",    item["tipo"],               tipo),
+            ("precio",  str(item["precio"]),        str(precio)),
+            ("stock",   str(item["stock"]),         str(stock)),
+        ]
+        for campo, ant, nvo in campos:
+            if ant != nvo:
+                conn.execute(
+                    "INSERT INTO historial_productos (producto_id, nombre_producto, campo, valor_anterior, valor_nuevo, fecha) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (producto_id, nombre, campo, ant, nvo, fecha_cambio),
+                )
         conn.execute(
             "UPDATE productos SET codigo = ?, nombre = ?, tipo = ?, precio = ?, stock = ? WHERE id = ?",
             (codigo, nombre, tipo, precio, stock, producto_id),
@@ -595,24 +623,49 @@ def configuracion():
 
 @app.route("/reportes")
 def reportes():
+    fecha_desde = request.args.get("fecha_desde", "").strip()
+    fecha_hasta = request.args.get("fecha_hasta", "").strip()
+
     conn = get_db()
+
+    # Construir filtro de fechas
+    filtro = "cancelada = 0"
+    params = []
+    if fecha_desde:
+        filtro += " AND fecha >= ?"
+        params.append(fecha_desde + " 00:00:00")
+    if fecha_hasta:
+        filtro += " AND fecha <= ?"
+        params.append(fecha_hasta + " 23:59:59")
+
+    filtro_ventas = "1=1"
+    params_ventas = []
+    if fecha_desde:
+        filtro_ventas += " AND fecha >= ?"
+        params_ventas.append(fecha_desde + " 00:00:00")
+    if fecha_hasta:
+        filtro_ventas += " AND fecha <= ?"
+        params_ventas.append(fecha_hasta + " 23:59:59")
+
     ventas = conn.execute(
-        "SELECT * FROM ventas ORDER BY fecha DESC LIMIT 100"
+        f"SELECT * FROM ventas WHERE {filtro_ventas} ORDER BY fecha DESC LIMIT 100",
+        params_ventas,
     ).fetchall()
-    # Los totales y estadísticas excluyen las ventas canceladas
     resumen = conn.execute(
-        "SELECT COUNT(*) AS num_ventas, COALESCE(SUM(total), 0) AS total_general "
-        "FROM ventas WHERE cancelada = 0"
+        f"SELECT COUNT(*) AS num_ventas, COALESCE(SUM(total), 0) AS total_general "
+        f"FROM ventas WHERE {filtro}", params
     ).fetchone()
     mas_vendidos = conn.execute(
-        "SELECT vd.nombre_producto, SUM(vd.cantidad) AS total_cantidad, SUM(vd.subtotal) AS total_ingresos "
-        "FROM venta_detalle vd JOIN ventas v ON v.id = vd.venta_id "
-        "WHERE v.cancelada = 0 "
-        "GROUP BY vd.nombre_producto ORDER BY total_cantidad DESC LIMIT 10"
+        f"SELECT vd.nombre_producto, SUM(vd.cantidad) AS total_cantidad, SUM(vd.subtotal) AS total_ingresos "
+        f"FROM venta_detalle vd JOIN ventas v ON v.id = vd.venta_id "
+        f"WHERE v.{filtro} "
+        f"GROUP BY vd.nombre_producto ORDER BY total_cantidad DESC LIMIT 10",
+        params,
     ).fetchall()
     por_dia = conn.execute(
-        "SELECT substr(fecha, 1, 10) AS dia, COUNT(*) AS num_ventas, SUM(total) AS total "
-        "FROM ventas WHERE cancelada = 0 GROUP BY dia ORDER BY dia DESC LIMIT 30"
+        f"SELECT substr(fecha, 1, 10) AS dia, COUNT(*) AS num_ventas, SUM(total) AS total "
+        f"FROM ventas WHERE {filtro} GROUP BY dia ORDER BY dia DESC LIMIT 30",
+        params,
     ).fetchall()
     conn.close()
     return render_template(
@@ -621,7 +674,85 @@ def reportes():
         resumen=resumen,
         mas_vendidos=mas_vendidos,
         por_dia=por_dia,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
     )
+
+
+@app.route("/reportes/exportar/excel")
+def exportar_excel():
+    fecha_desde = request.args.get("fecha_desde", "").strip()
+    fecha_hasta = request.args.get("fecha_hasta", "").strip()
+
+    conn = get_db()
+    filtro = "1=1"
+    params = []
+    if fecha_desde:
+        filtro += " AND v.fecha >= ?"
+        params.append(fecha_desde + " 00:00:00")
+    if fecha_hasta:
+        filtro += " AND v.fecha <= ?"
+        params.append(fecha_hasta + " 23:59:59")
+
+    ventas = conn.execute(
+        f"SELECT v.*, GROUP_CONCAT(vd.nombre_producto || ' x' || vd.cantidad, ' | ') AS detalle "
+        f"FROM ventas v LEFT JOIN venta_detalle vd ON vd.venta_id = v.id "
+        f"WHERE {filtro} GROUP BY v.id ORDER BY v.fecha DESC",
+        params,
+    ).fetchall()
+    conn.close()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Ventas"
+
+    hdr_fill = PatternFill(start_color="FF1a3a5c", end_color="FF1a3a5c", fill_type="solid")
+    hdr_font = Font(bold=True, color="FFFFFFFF")
+    headers = ["#", "Fecha", "Total ($)", "Estado", "Monto recibido ($)", "Cambio ($)", "Detalle"]
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = hdr_fill
+        cell.font = hdr_font
+        cell.alignment = Alignment(horizontal="center")
+
+    for ri, v in enumerate(ventas, 2):
+        estado = "Cancelada" if v["cancelada"] else "Válida"
+        ws.append([
+            v["id"], v["fecha"], v["total"], estado,
+            v["monto_recibido"] or 0, v["cambio"] or 0, v["detalle"] or "",
+        ])
+
+    ws.column_dimensions["A"].width = 6
+    ws.column_dimensions["B"].width = 20
+    ws.column_dimensions["C"].width = 12
+    ws.column_dimensions["D"].width = 10
+    ws.column_dimensions["E"].width = 18
+    ws.column_dimensions["F"].width = 12
+    ws.column_dimensions["G"].width = 60
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    nombre_archivo = f"reporte_ventas_{datetime.now().strftime('%Y%m%d')}.xlsx"
+    return Response(
+        output,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={nombre_archivo}"},
+    )
+
+
+@app.route("/reportes/historial")
+@requiere_admin
+def historial_productos():
+    conn = get_db()
+    historial = conn.execute(
+        "SELECT h.*, p.nombre AS nombre_actual FROM historial_productos h "
+        "LEFT JOIN productos p ON p.id = h.producto_id "
+        "ORDER BY h.fecha DESC LIMIT 200"
+    ).fetchall()
+    conn.close()
+    return render_template("historial_productos.html", historial=historial)
 
 
 if __name__ == "__main__":

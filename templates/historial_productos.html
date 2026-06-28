@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Historial de cambios — ML Motors{% endblock %}
+{% block contenido %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0">Historial de cambios en productos</h1>
+    <a href="{{ url_for('reportes') }}" class="btn btn-outline-secondary btn-sm">← Volver a reportes</a>
+</div>
+
+<table class="table table-striped table-sm align-middle">
+    <thead class="table-dark">
+        <tr>
+            <th>Fecha</th>
+            <th>Producto</th>
+            <th>Campo</th>
+            <th>Valor anterior</th>
+            <th>Valor nuevo</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for h in historial %}
+        <tr>
+            <td class="text-nowrap">{{ h.fecha }}</td>
+            <td>{{ h.nombre_producto }}</td>
+            <td>
+                {% if h.campo == 'precio' %}
+                    <span class="badge bg-warning text-dark">Precio</span>
+                {% elif h.campo == 'stock' %}
+                    <span class="badge bg-info text-dark">Stock</span>
+                {% elif h.campo == 'nombre' %}
+                    <span class="badge bg-primary">Nombre</span>
+                {% elif h.campo == 'codigo' %}
+                    <span class="badge bg-secondary">Código</span>
+                {% else %}
+                    <span class="badge bg-light text-dark">{{ h.campo }}</span>
+                {% endif %}
+            </td>
+            <td class="text-danger">{{ h.valor_anterior or '—' }}</td>
+            <td class="text-success">{{ h.valor_nuevo or '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted">Aún no hay cambios registrados.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

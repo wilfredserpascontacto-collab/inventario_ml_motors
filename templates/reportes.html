@@ -1,7 +1,31 @@
 {% extends "base.html" %}
-{% block titulo %}Reportes - Inventario y Caja{% endblock %}
+{% block titulo %}Reportes - ML Motors{% endblock %}
 {% block contenido %}
-<h1 class="mb-4">Reportes de ventas</h1>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="mb-0">Reportes de ventas</h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('exportar_excel', fecha_desde=fecha_desde, fecha_hasta=fecha_hasta) }}"
+           class="btn btn-success btn-sm">&#x1F4E5; Exportar Excel</a>
+        <a href="{{ url_for('historial_productos') }}"
+           class="btn btn-outline-secondary btn-sm">&#x1F4CB; Historial de cambios</a>
+    </div>
+</div>
+
+<!-- Filtros de fecha -->
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-auto">
+        <label class="form-label mb-1 small">Desde</label>
+        <input type="date" name="fecha_desde" class="form-control form-control-sm" value="{{ fecha_desde }}">
+    </div>
+    <div class="col-auto">
+        <label class="form-label mb-1 small">Hasta</label>
+        <input type="date" name="fecha_hasta" class="form-control form-control-sm" value="{{ fecha_hasta }}">
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+        <a href="{{ url_for('reportes') }}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+    </div>
+</form>
 
 <div class="row g-3 mb-4">
     <div class="col-md-6">
@@ -24,9 +48,9 @@
 
 <div class="row">
     <div class="col-md-6">
-        <h3>Productos / servicios más vendidos</h3>
+        <h3>Productos más vendidos</h3>
         <table class="table table-sm">
-            <thead><tr><th>Nombre</th><th>Cantidad vendida</th><th>Ingresos</th></tr></thead>
+            <thead><tr><th>Nombre</th><th>Cantidad</th><th>Ingresos</th></tr></thead>
             <tbody>
                 {% for m in mas_vendidos %}
                 <tr>
@@ -40,11 +64,10 @@
             </tbody>
         </table>
     </div>
-
     <div class="col-md-6">
         <h3>Ventas por día</h3>
         <table class="table table-sm">
-            <thead><tr><th>Día</th><th>N.º de ventas</th><th>Total</th></tr></thead>
+            <thead><tr><th>Día</th><th>N.º ventas</th><th>Total</th></tr></thead>
             <tbody>
                 {% for d in por_dia %}
                 <tr>
@@ -61,7 +84,7 @@
 </div>
 
 <h3>Historial de ventas (últimas 100)</h3>
-<p class="text-muted small">Las ventas marcadas como "Cancelada" no se cuentan en los totales ni estadísticas de arriba.</p>
+<p class="text-muted small">Las ventas canceladas no se cuentan en los totales de arriba.</p>
 <table class="table table-striped table-sm">
     <thead><tr><th>#</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead>
     <tbody>

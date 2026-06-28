@@ -46,6 +46,18 @@ CREATE TABLE configuracion (
     valor TEXT
 );
 
+-- Historial de cambios en productos (precio, stock, nombre, código, tipo)
+CREATE TABLE IF NOT EXISTS historial_productos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    producto_id INTEGER NOT NULL,
+    nombre_producto TEXT NOT NULL,
+    campo TEXT NOT NULL,
+    valor_anterior TEXT,
+    valor_nuevo TEXT,
+    fecha TEXT NOT NULL,
+    FOREIGN KEY (producto_id) REFERENCES productos (id)
+);
+
 CREATE TABLE venta_detalle (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     venta_id INTEGER NOT NULL,
