@@ -21,6 +21,7 @@
             <strong style="color:#5ccc7a;">&#9646; TURNO ACTIVO</strong>
             &nbsp;&mdash;&nbsp; Apertura: {{ turno['fecha_apertura'] }}
             &nbsp;&middot;&nbsp; Fondo: ${{ "%.2f"|format(turno['monto_inicial']) }}
+            {% if turno['cajero'] %}&nbsp;&middot;&nbsp; Cajero: <strong style="color:#ffffff;">{{ turno['cajero'] }}</strong>{% endif %}
             &nbsp;&middot;&nbsp; <a href="{{ url_for('cerrar_caja') }}" style="color:#3acc5a; font-weight:600;">Cerrar caja</a>
         </div>
     </div>
