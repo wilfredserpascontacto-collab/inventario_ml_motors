@@ -25,6 +25,10 @@
                 </div>
             </div>
             <div class="mb-3">
+                <label class="form-label">Cajero (nombre de quien atiende)</label>
+                <input type="text" name="cajero" class="form-control" placeholder="Ej. María López" required>
+            </div>
+            <div class="mb-3">
                 <label class="form-label">Notas (opcional)</label>
                 <input type="text" name="notas_apertura" class="form-control" placeholder="Ej. Turno de la mañana">
             </div>
@@ -39,6 +43,7 @@
     <div>
         <strong>Caja abierta</strong> desde {{ turno.fecha_apertura }}
         — fondo inicial: ${{ "%.2f"|format(turno.monto_inicial) }}
+        {% if turno.cajero %}<br><span class="small">Cajero: <strong>{{ turno.cajero }}</strong></span>{% endif %}
         {% if turno.notas_apertura %}<br><span class="small">Notas: {{ turno.notas_apertura }}</span>{% endif %}
     </div>
     <a href="{{ url_for('turnos') }}" class="btn btn-sm btn-outline-secondary">Ver cortes de caja</a>
