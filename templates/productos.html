@@ -108,35 +108,11 @@
             </td>
             <td class="text-end">
                 <a href="{{ url_for('editar_producto', producto_id=p.id) }}" class="btn btn-sm btn-outline-secondary">Editar</a>
-                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminar{{ p.id }}">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar"
+                        data-id="{{ p.id }}"
+                        data-nombre="{{ p.nombre | e }}">
                     Eliminar
                 </button>
-
-                <!-- Modal: confirmar eliminación con contraseña de administrador -->
-                <div class="modal fade" id="modalEliminar{{ p.id }}" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <form method="post" action="{{ url_for('eliminar_producto', producto_id=p.id) }}" class="modal-content text-start">
-                            <div class="modal-header">
-                                <h5 class="modal-title">Eliminar "{{ p.nombre }}"</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                            </div>
-                            <div class="modal-body">
-                                <p class="text-danger">
-                                    Esta acción no se puede deshacer. Para confirmar,
-                                    ingresa la contraseña de administrador.
-                                </p>
-                                <div class="mb-3">
-                                    <label class="form-label">Contraseña de administrador</label>
-                                    <input type="password" name="contrasena" class="form-control" required>
-                                </div>
-                            </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                                <button type="submit" class="btn btn-danger">Confirmar eliminación</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             </td>
         </tr>
         {% else %}
@@ -144,4 +120,44 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Modal único compartido para confirmar eliminación -->
+<div class="modal fade" id="modalEliminar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="post" id="formEliminar" class="modal-content text-start">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEliminarTitulo">Eliminar producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-danger">
+                    Esta acción no se puede deshacer. Para confirmar,
+                    ingresa la contraseña de administrador.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">Contraseña de administrador</label>
+                    <input type="password" name="contrasena" id="inputContrasena" class="form-control" required autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="submit" class="btn btn-danger">Confirmar eliminación</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.btn-eliminar').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-id');
+            var nombre = this.getAttribute('data-nombre');
+            document.getElementById('modalEliminarTitulo').textContent = 'Eliminar "' + nombre + '"';
+            document.getElementById('formEliminar').action = '/productos/' + id + '/eliminar';
+            document.getElementById('inputContrasena').value = '';
+            var modal = new bootstrap.Modal(document.getElementById('modalEliminar'));
+            modal.show();
+        });
+    });
+</script>
 {% endblock %}
