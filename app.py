@@ -80,6 +80,9 @@ def migrar_db():
         "valor_nuevo TEXT, "
         "fecha TEXT NOT NULL)"
     )
+    cols_t = [r["name"] for r in conn.execute("PRAGMA table_info(turnos_caja)").fetchall()]
+    if "cajero" not in cols_t:
+        conn.execute("ALTER TABLE turnos_caja ADD COLUMN cajero TEXT")
     conn.commit()
     conn.close()
 
@@ -346,10 +349,11 @@ def eliminar_producto(producto_id):
 
     conn = get_db()
     item = conn.execute("SELECT * FROM productos WHERE id = ?", (producto_id,)).fetchone()
+    nombre = item["nombre"] if item else f"#{producto_id}"
+    conn.execute("DELETE FROM historial_productos WHERE producto_id = ?", (producto_id,))
     conn.execute("DELETE FROM productos WHERE id = ?", (producto_id,))
     conn.commit()
     conn.close()
-    nombre = item["nombre"] if item else f"#{producto_id}"
     flash(f'"{nombre}" se eliminó del catálogo.', "success")
     return redirect(url_for("productos"))
 
@@ -381,9 +385,10 @@ def abrir_caja():
         monto_inicial = 0.0
     notas = request.form.get("notas_apertura", "").strip()
 
+    cajero = request.form.get("cajero", "").strip()
     conn.execute(
-        "INSERT INTO turnos_caja (fecha_apertura, monto_inicial, notas_apertura) VALUES (?, ?, ?)",
-        (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), monto_inicial, notas),
+        "INSERT INTO turnos_caja (fecha_apertura, monto_inicial, notas_apertura, cajero) VALUES (?, ?, ?, ?)",
+        (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), monto_inicial, notas, cajero),
     )
     conn.commit()
     conn.close()
