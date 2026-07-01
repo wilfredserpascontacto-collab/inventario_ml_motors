@@ -148,6 +148,13 @@
 </div>
 
 <script>
+    // Mover el modal a <body> para escapar el stacking context del contenedor principal
+    // (main-wrapper tiene z-index:1 que encierra el modal y lo deja debajo del backdrop)
+    var modalEl = document.getElementById('modalEliminar');
+    if (modalEl && modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+    }
+
     document.querySelectorAll('.btn-eliminar').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var id = this.getAttribute('data-id');
@@ -155,8 +162,9 @@
             document.getElementById('modalEliminarTitulo').textContent = 'Eliminar "' + nombre + '"';
             document.getElementById('formEliminar').action = '/productos/' + id + '/eliminar';
             document.getElementById('inputContrasena').value = '';
-            var modal = new bootstrap.Modal(document.getElementById('modalEliminar'));
-            modal.show();
+            var existing = bootstrap.Modal.getInstance(modalEl);
+            if (existing) existing.dispose();
+            new bootstrap.Modal(modalEl).show();
         });
     });
 </script>
