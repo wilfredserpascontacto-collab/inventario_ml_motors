@@ -10,6 +10,7 @@
     <thead>
         <tr>
             <th>#</th>
+            <th>Cajero</th>
             <th>Apertura</th>
             <th>Cierre</th>
             <th>Fondo inicial</th>
@@ -23,6 +24,7 @@
         {% for t in turnos %}
         <tr>
             <td>{{ t.id }}</td>
+            <td>{{ t.cajero or '—' }}</td>
             <td>{{ t.fecha_apertura }}</td>
             <td>{{ t.fecha_cierre or '—' }}</td>
             <td>${{ "%.2f"|format(t.monto_inicial) }}</td>
@@ -50,7 +52,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="text-muted text-center">Aún no se ha abierto ningún turno de caja.</td></tr>
+        <tr><td colspan="9" class="text-muted text-center">Aún no se ha abierto ningún turno de caja.</td></tr>
         {% endfor %}
     </tbody>
 </table>
