@@ -36,6 +36,20 @@
                value="{{ producto.stock if producto else 0 }}">
     </div>
 
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Sección (opcional)</label>
+            <input type="text" name="seccion" class="form-control" placeholder="Ej. 1"
+                   value="{{ producto.seccion if producto and producto.seccion else '' }}">
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Área (opcional)</label>
+            <input type="text" name="area" class="form-control text-uppercase" placeholder="Ej. A1"
+                   value="{{ producto.area if producto and producto.area else '' }}">
+        </div>
+        <div class="form-text mb-3">Ubicación física: Sección + Área. Puedes dejar ambos campos vacíos.</div>
+    </div>
+
     {% if producto %}
     <div class="mb-3">
         <label class="form-label">Contraseña de administrador</label>
@@ -56,3 +70,4 @@
     actualizarStock();
 </script>
 {% endblock %}
+
