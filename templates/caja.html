@@ -156,9 +156,10 @@
                 ? '<span class="badge bg-info text-dark">Servicio</span>'
                 : `<span class="badge bg-success">En stock: ${p.stock}</span>`;
             const item = document.createElement('button');
+            const ubicacion = p.seccion && p.area ? ` · Sección ${p.seccion} / ${p.area}` : '';
             item.type = 'button';
             item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-            item.innerHTML = `<span><strong>${p.nombre}</strong> ${p.codigo ? '· ' + p.codigo : ''} — $${p.precio.toFixed(2)}</span>${estado}`;
+            item.innerHTML = `<span><strong>${p.nombre}</strong> ${p.codigo ? '· ' + p.codigo : ''}${ubicacion} — $${p.precio.toFixed(2)}</span>${estado}`;
             item.addEventListener('click', () => {
                 agregarAlCarrito(p);
                 inputBuscador.value = '';
@@ -190,6 +191,8 @@
                 tipo: p.tipo,
                 precio: p.precio,
                 stock: p.stock,
+                seccion: p.seccion,
+                area: p.area,
                 cantidad: 1,
             };
         }
@@ -236,6 +239,7 @@
             fila.innerHTML = `
                 <td>
                     ${item.nombre} ${item.codigo ? '<span class="text-muted small">(' + item.codigo + ')</span>' : ''}
+                    ${item.seccion && item.area ? '<span class="badge bg-primary">Sección ' + item.seccion + ' · ' + item.area + '</span>' : ''}
                     ${item.tipo === 'servicio' ? '<span class="badge bg-info text-dark">Servicio</span>' : ''}
                 </td>
                 <td>$${item.precio.toFixed(2)}</td>
@@ -325,3 +329,4 @@
 {% endif %}
 {% endif %}
 {% endblock %}
+
