@@ -40,6 +40,11 @@ def migrar_db():
     """Actualiza una base de datos ya existente para que tenga las columnas y
     tablas nuevas, sin borrar los datos que ya tiene guardados."""
     conn = get_db()
+    columnas_productos = [fila["name"] for fila in conn.execute("PRAGMA table_info(productos)").fetchall()]
+    if "seccion" not in columnas_productos:
+        conn.execute("ALTER TABLE productos ADD COLUMN seccion TEXT")
+    if "area" not in columnas_productos:
+        conn.execute("ALTER TABLE productos ADD COLUMN area TEXT")
     columnas_ventas = [fila["name"] for fila in conn.execute("PRAGMA table_info(ventas)").fetchall()]
     if "cancelada" not in columnas_ventas:
         conn.execute("ALTER TABLE ventas ADD COLUMN cancelada INTEGER NOT NULL DEFAULT 0")
@@ -191,7 +196,10 @@ def buscar_productos(conn, texto, solo_disponibles=False):
 
     resultados = []
     for fila in filas:
-        texto_producto = f"{fila['codigo'] or ''} {fila['nombre']}".lower()
+        texto_producto = (
+            f"{fila['codigo'] or ''} {fila['nombre']} "
+            f"seccion {fila['seccion'] or ''} area {fila['area'] or ''}"
+        ).lower()
         coincidencias = sum(1 for palabra in palabras if palabra in texto_producto)
         if coincidencias > 0:
             resultados.append((coincidencias, fila))
@@ -218,6 +226,8 @@ def api_buscar_productos():
                 "tipo": p["tipo"],
                 "precio": p["precio"],
                 "stock": p["stock"],
+                "seccion": p["seccion"] or "",
+                "area": p["area"] or "",
                 "disponible": (p["tipo"] == "servicio" or p["stock"] > 0),
             }
             for p in items[:15]
@@ -252,13 +262,28 @@ def inicio():
 @requiere_admin
 def productos():
     busqueda = request.args.get("q", "").strip()
+    seccion = request.args.get("seccion", "").strip()
+    area = request.args.get("area", "").strip().upper()
     conn = get_db()
     if busqueda:
         items = buscar_productos(conn, busqueda)
     else:
         items = conn.execute("SELECT * FROM productos ORDER BY nombre").fetchall()
+    if seccion:
+        items = [item for item in items if (item["seccion"] or "") == seccion]
+    if area:
+        items = [item for item in items if (item["area"] or "").upper() == area]
+    secciones = conn.execute(
+        "SELECT DISTINCT seccion FROM productos WHERE TRIM(COALESCE(seccion, '')) <> '' ORDER BY seccion"
+    ).fetchall()
+    areas = conn.execute(
+        "SELECT DISTINCT area FROM productos WHERE TRIM(COALESCE(area, '')) <> '' ORDER BY area"
+    ).fetchall()
     conn.close()
-    return render_template("productos.html", productos=items, busqueda=busqueda)
+    return render_template(
+        "productos.html", productos=items, busqueda=busqueda,
+        seccion=seccion, area=area, secciones=secciones, areas=areas,
+    )
 
 
 @app.route("/productos/nuevo", methods=["GET", "POST"])
@@ -270,6 +295,8 @@ def nuevo_producto():
         tipo = request.form["tipo"]
         precio = float(request.form["precio"] or 0)
         stock = int(request.form["stock"] or 0) if tipo == "producto" else 0
+        seccion = request.form.get("seccion", "").strip()
+        area = request.form.get("area", "").strip().upper()
 
         if not nombre:
             flash("El nombre es obligatorio.", "error")
@@ -277,8 +304,8 @@ def nuevo_producto():
 
         conn = get_db()
         conn.execute(
-            "INSERT INTO productos (codigo, nombre, tipo, precio, stock) VALUES (?, ?, ?, ?, ?)",
-            (codigo, nombre, tipo, precio, stock),
+            "INSERT INTO productos (codigo, nombre, tipo, precio, stock, seccion, area) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (codigo, nombre, tipo, precio, stock, seccion or None, area or None),
         )
         conn.commit()
         conn.close()
@@ -310,6 +337,8 @@ def editar_producto(producto_id):
         tipo = request.form["tipo"]
         precio = float(request.form["precio"] or 0)
         stock = int(request.form["stock"] or 0) if tipo == "producto" else 0
+        seccion = request.form.get("seccion", "").strip()
+        area = request.form.get("area", "").strip().upper()
 
         fecha_cambio = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         campos = [
@@ -318,6 +347,8 @@ def editar_producto(producto_id):
             ("tipo",    item["tipo"],               tipo),
             ("precio",  str(item["precio"]),        str(precio)),
             ("stock",   str(item["stock"]),         str(stock)),
+            ("seccion", str(item["seccion"] or ""), seccion),
+            ("area",    str(item["area"] or ""),    area),
         ]
         for campo, ant, nvo in campos:
             if ant != nvo:
@@ -327,8 +358,8 @@ def editar_producto(producto_id):
                     (producto_id, nombre, campo, ant, nvo, fecha_cambio),
                 )
         conn.execute(
-            "UPDATE productos SET codigo = ?, nombre = ?, tipo = ?, precio = ?, stock = ? WHERE id = ?",
-            (codigo, nombre, tipo, precio, stock, producto_id),
+            "UPDATE productos SET codigo = ?, nombre = ?, tipo = ?, precio = ?, stock = ?, seccion = ?, area = ? WHERE id = ?",
+            (codigo, nombre, tipo, precio, stock, seccion or None, area or None, producto_id),
         )
         conn.commit()
         conn.close()
@@ -762,3 +793,4 @@ def historial_productos():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
