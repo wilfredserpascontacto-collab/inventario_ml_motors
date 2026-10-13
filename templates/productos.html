@@ -139,8 +139,21 @@
 <div class="d-md-none">
     {% for p in productos %}
     <div class="ficha-movil">
-        <div class="ficha-nombre">{{ p.nombre }}</div>
-        <div class="ficha-codigo">{{ p.codigo or 'Sin código' }}{% if p.marca %} · {{ p.marca }}{% endif %}</div>
+        <div class="d-flex gap-3">
+            {% if p.foto %}
+            <a href="{{ url_for('foto_producto', nombre=p.foto) }}" class="miniatura">
+                <img src="{{ url_for('foto_producto', nombre=p.foto) }}" alt="{{ p.nombre }}" loading="lazy">
+            </a>
+            {% else %}
+            <a href="{{ url_for('editar_producto', producto_id=p.id) }}" class="miniatura sin-foto">
+                <span>+ foto</span>
+            </a>
+            {% endif %}
+            <div class="flex-grow-1 min-w-0">
+                <div class="ficha-nombre">{{ p.nombre }}</div>
+                <div class="ficha-codigo">{{ p.codigo or 'Sin código' }}{% if p.marca %} · {{ p.marca }}{% endif %}</div>
+            </div>
+        </div>
 
         <div class="ficha-datos">
             <div>
@@ -212,6 +225,23 @@
     }
     .ficha-etiqueta { color: #6a82a0; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; }
     .ficha-valor { color: #e8f0fa; font-size: 1.05rem; font-weight: 600; }
+    .min-w-0 { min-width: 0; }   /* deja que el nombre largo corte en vez de estirar la fila */
+
+    .miniatura {
+        flex: 0 0 64px; width: 64px; height: 64px;
+        border-radius: 6px; overflow: hidden;
+        background: #0b1a33; border: 1px solid #1a3060;
+        display: flex; align-items: center; justify-content: center;
+        text-decoration: none;
+    }
+    .miniatura img { width: 100%; height: 100%; object-fit: cover; }
+    .miniatura.sin-foto { border-style: dashed; }
+    .miniatura.sin-foto span { color: #5a7596; font-size: .7rem; letter-spacing: .3px; }
+
+    .mini-tabla {
+        width: 44px; height: 44px; object-fit: cover;
+        border-radius: 5px; border: 1px solid #1a3060; background: #0b1a33;
+    }
 
     /* Las cuatro tarjetas de resumen se achican en el celular para no empujar
        la lista fuera de la pantalla. */
@@ -225,6 +255,7 @@
 <table class="table table-striped align-middle d-none d-md-table">
     <thead>
         <tr>
+            <th></th>
             <th>Código</th>
             <th>Nombre</th>
             <th>Ubicación</th>
@@ -237,6 +268,13 @@
     <tbody>
         {% for p in productos %}
         <tr>
+            <td>
+                {% if p.foto %}
+                <a href="{{ url_for('foto_producto', nombre=p.foto) }}" target="_blank">
+                    <img src="{{ url_for('foto_producto', nombre=p.foto) }}" class="mini-tabla" alt="{{ p.nombre }}" loading="lazy">
+                </a>
+                {% endif %}
+            </td>
             <td>{{ p.codigo or '—' }}</td>
             <td>{{ p.nombre }}</td>
             <td>
@@ -285,7 +323,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="text-center text-muted">No hay productos que coincidan con la búsqueda o los filtros.</td></tr>
+        <tr><td colspan="8" class="text-center text-muted">No hay productos que coincidan con la búsqueda o los filtros.</td></tr>
         {% endfor %}
     </tbody>
 </table>
