@@ -307,9 +307,23 @@ def productos():
         "SELECT DISTINCT area FROM productos WHERE TRIM(COALESCE(area, '')) <> '' ORDER BY area"
     ).fetchall()
     conn.close()
+    # El resumen se calcula sobre lo que está en pantalla, así que con un
+    # filtro puesto contesta «cuánto hay en la Sección 9» y sin filtro
+    # contesta «cuánto hay en toda la bodega». Las herramientas no suman
+    # dinero: no tienen precio porque no se venden.
+    resumen = {
+        "articulos": len(items),
+        "piezas": sum((i["stock"] or 0) for i in items if i["tipo"] != "servicio"),
+        "valor": sum((i["precio"] or 0) * (i["stock"] or 0)
+                     for i in items if i["tipo"] == "producto"),
+        "sin_precio": sum(1 for i in items
+                          if i["tipo"] == "producto" and not (i["precio"] or 0)),
+        "herramientas": sum(1 for i in items if i["tipo"] == "herramienta"),
+    }
     return render_template(
         "productos.html", productos=items, busqueda=busqueda,
         seccion=seccion, area=area, secciones=secciones, areas=areas,
+        resumen=resumen,
     )
 
 
