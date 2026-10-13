@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block titulo %}Importar catálogo - Inventario y Caja{% endblock %}
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Importar catálogo desde Excel</h1>
+    <a href="{{ url_for('productos') }}" class="btn btn-outline-secondary">Volver al catálogo</a>
+</div>
+
+<div class="alert alert-danger">
+    <strong>Esto reemplaza el catálogo completo.</strong>
+    Se borran los <strong>{{ actuales }}</strong> artículos que hay ahora y quedan
+    únicamente los del archivo que subas.
+    <div class="mt-2 small">
+        El historial de ventas, los recibos y los cortes de caja <strong>no se tocan</strong>:
+        cada venta guarda por su cuenta el nombre y el precio de lo que se vendió.
+    </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="content-card p-4">
+
+    <div class="mb-4">
+        <label for="archivo" class="form-label">Archivo de Excel</label>
+        <input type="file" name="archivo" id="archivo" accept=".xlsx,.xlsm"
+               class="form-control" required>
+        <div class="form-text">
+            Se leen dos hojas: <code>Inventario</code> y la de herramientas.
+            Las cabeceras van en la fila 9 y los datos empiezan en la 10, tal como
+            está armado el libro de ML Motors.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label">Qué se toma de cada hoja</label>
+        <div class="row g-3 small">
+            <div class="col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="fw-bold mb-2">Inventario</div>
+                    código · nombre · marca · ubicación · cantidad · precio
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="border rounded p-3 h-100">
+                    <div class="fw-bold mb-2">Herramientas</div>
+                    código · nombre · marca · ubicación · cantidad · estado
+                    <div class="mt-2 text-secondary">
+                        Entran sin precio: son de uso interno y no se pueden vender.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="form-text mt-2">
+            «Sección 9 - Área C2» se parte en sección y área, así se puede filtrar
+            por ubicación en el catálogo.
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <label for="confirmar" class="form-label">
+            Para continuar, escribí <code>BORRAR Y REEMPLAZAR</code>
+        </label>
+        <input type="text" name="confirmar" id="confirmar" class="form-control"
+               autocomplete="off" placeholder="BORRAR Y REEMPLAZAR" required>
+        <div class="form-text">
+            Antes de borrar se guarda un respaldo de la base actual en la carpeta
+            <code>respaldos</code> del servidor, con la fecha y la hora.
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-danger">Reemplazar el catálogo</button>
+    <a href="{{ url_for('productos') }}" class="btn btn-outline-secondary ms-2">Cancelar</a>
+
+</form>
+
+{% endblock %}

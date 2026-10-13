@@ -5,6 +5,7 @@
     <h1>Catálogo de productos y servicios</h1>
     <div class="d-flex gap-2">
         <a href="{{ url_for('nuevo_producto') }}" class="btn btn-primary">+ Nuevo</a>
+        <a href="{{ url_for('importar_catalogo') }}" class="btn btn-outline-primary">Importar desde Excel</a>
         <a href="{{ url_for('salir_productos') }}" class="btn btn-outline-secondary">Salir del modo administrador</a>
     </div>
 </div>
