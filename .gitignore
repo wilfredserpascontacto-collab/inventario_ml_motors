@@ -1,0 +1,11 @@
+# Archivos compilados de Python: se regeneran solos y ensucian cada commit.
+__pycache__/
+*.pyc
+
+# El entorno virtual NO va en el repo: son decenas de MB que se reconstruyen
+# con pip install -r requirements.txt. Ya hay uno subido de antes; sacarlo es
+# trabajo aparte porque cambia el historial.
+venv/
+
+# Respaldos de la base que genera la importacion.
+respaldos/

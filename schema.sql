@@ -8,11 +8,14 @@ CREATE TABLE productos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     codigo TEXT,                              -- código/SKU/código de barras (opcional)
     nombre TEXT NOT NULL,
-    tipo TEXT NOT NULL DEFAULT 'producto',   -- 'producto' o 'servicio'
-    precio REAL NOT NULL DEFAULT 0,
+    tipo TEXT NOT NULL DEFAULT 'producto',   -- 'producto', 'servicio' o 'herramienta'
+    precio REAL NOT NULL DEFAULT 0,           -- las herramientas son de uso interno: siempre 0
     stock INTEGER NOT NULL DEFAULT 0,         -- los servicios siempre tienen stock 0 / ilimitado
     seccion TEXT,                             -- sección física de la bodega (opcional)
-    area TEXT                                 -- espacio dentro de la sección, ej. A1 (opcional)
+    area TEXT,                                -- espacio dentro de la sección, ej. A1 (opcional)
+    marca TEXT,                               -- marca o modelo (opcional)
+    foto TEXT,                                -- nombre del archivo dentro de MEDIA_DIR, no la imagen
+    estado TEXT                               -- solo herramientas: buena / dañada / perdida
 );
 
 CREATE TABLE ventas (

@@ -1,5 +1,6 @@
 import io
 import os
+import re
 import sqlite3
 from datetime import datetime
 from functools import wraps
@@ -17,6 +18,22 @@ CONTRASENA_ADMIN_POR_DEFECTO = "admin123"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.environ.get("DB_PATH", os.path.join(BASE_DIR, "inventario.db"))
 SCHEMA_PATH = os.path.join(BASE_DIR, "schema.sql")
+
+# Las fotos viven JUNTO a la base de datos, no dentro del contenedor: en el
+# servidor DB_PATH es /data/inventario.db, que es el volumen persistente, asi
+# que las fotos caen en /data/fotos y sobreviven a cada despliegue. Si se
+# guardaran en la carpeta del codigo, se borrarian al redesplegar.
+MEDIA_DIR = os.environ.get("MEDIA_DIR", os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), "fotos"))
+
+# Una foto de celular pesa entre 3 y 8 MB. Con 600 articulos eso es mas de 3 GB
+# en un servidor que ya va justo, y cada vista del catalogo se volveria lenta.
+# Las reducimos al guardarlas: lado mayor 1000 px, JPEG de calidad 80.
+FOTO_LADO_MAX = 1000
+FOTO_CALIDAD = 80
+FOTO_EXTENSIONES = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
+
+TIPOS_VALIDOS = ("producto", "servicio", "herramienta")
+ESTADOS_HERRAMIENTA = ("buena", "dañada", "perdida")
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave-secreta-local-inventario")
@@ -45,6 +62,16 @@ def migrar_db():
         conn.execute("ALTER TABLE productos ADD COLUMN seccion TEXT")
     if "area" not in columnas_productos:
         conn.execute("ALTER TABLE productos ADD COLUMN area TEXT")
+    # Nombre del archivo de la foto dentro de MEDIA_DIR. Guardamos el nombre,
+    # no la imagen: una foto dentro de SQLite infla la base y vuelve lenta
+    # cualquier consulta del catalogo.
+    if "foto" not in columnas_productos:
+        conn.execute("ALTER TABLE productos ADD COLUMN foto TEXT")
+    if "marca" not in columnas_productos:
+        conn.execute("ALTER TABLE productos ADD COLUMN marca TEXT")
+    # Solo aplica a las herramientas: buena / dañada / perdida.
+    if "estado" not in columnas_productos:
+        conn.execute("ALTER TABLE productos ADD COLUMN estado TEXT")
     columnas_ventas = [fila["name"] for fila in conn.execute("PRAGMA table_info(ventas)").fetchall()]
     if "cancelada" not in columnas_ventas:
         conn.execute("ALTER TABLE ventas ADD COLUMN cancelada INTEGER NOT NULL DEFAULT 0")
@@ -386,6 +413,165 @@ def eliminar_producto(producto_id):
     conn.commit()
     conn.close()
     flash(f'"{nombre}" se eliminó del catálogo.', "success")
+    return redirect(url_for("productos"))
+
+
+# ---------- Importar el catálogo desde Excel ----------
+
+def partir_ubicacion(texto):
+    """'Sección 9 - Área C2' -> ('Sección 9', 'C2').  También acepta
+    'SECCION 2 - AREA B2' sin tildes y mayúsculas, que es como viene la
+    hoja de herramientas. Si no reconoce el formato, deja todo en sección."""
+    t = (texto or "").strip()
+    if not t:
+        return "", ""
+    m = re.match(r"^\s*secci[oó]n\s*([\w-]+)\s*[-–]\s*[aá]rea\s*([\w-]+)\s*$", t, re.IGNORECASE)
+    if m:
+        return f"Sección {m.group(1)}", m.group(2).upper()
+    return t, ""
+
+
+def respaldar_base():
+    """Copia la base ANTES de cualquier borrado masivo. Sin esto, una
+    importación equivocada no tiene vuelta atrás."""
+    carpeta = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)), "respaldos")
+    os.makedirs(carpeta, exist_ok=True)
+    destino = os.path.join(carpeta, f"inventario-{datetime.now():%Y%m%d-%H%M%S}.db")
+    # sqlite3.backup copia una base en uso de forma consistente; copiar el
+    # archivo a mano puede dejarlo a medias si alguien está vendiendo.
+    origen = sqlite3.connect(DB_PATH)
+    copia = sqlite3.connect(destino)
+    with copia:
+        origen.backup(copia)
+    copia.close()
+    origen.close()
+    return destino
+
+
+def leer_excel_inventario(archivo):
+    """Lee el libro de ML Motors y devuelve (productos, herramientas, avisos).
+    Las cabeceras están en la fila 9 y los datos empiezan en la 10."""
+    libro = openpyxl.load_workbook(archivo, data_only=True)
+    avisos = []
+
+    def limpio(v):
+        if v is None:
+            return ""
+        s = str(v).strip()
+        return "" if set(s) == {"-"} else s
+
+    def numero(v):
+        try:
+            return float(v or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def hoja_que_empieza(prefijo):
+        for n in libro.sheetnames:
+            if n.strip().lower().startswith(prefijo):
+                return libro[n]
+        return None
+
+    productos = []
+    hoja = hoja_que_empieza("inventario de herramientas")
+    hoja_prod = next((libro[n] for n in libro.sheetnames
+                      if n.strip().lower() == "inventario"), None)
+    if hoja_prod is None:
+        avisos.append("No encontré la hoja «Inventario» en el archivo.")
+    else:
+        for fila in hoja_prod.iter_rows(min_row=10, values_only=True):
+            codigo, nombre, marca, ubic = (limpio(fila[1]), limpio(fila[2]),
+                                           limpio(fila[3]), limpio(fila[4]))
+            if not nombre:
+                continue
+            seccion, area = partir_ubicacion(ubic)
+            # Excel convierte los códigos que parecen número en 1002389847.0
+            if codigo.endswith(".0") and codigo[:-2].isdigit():
+                codigo = codigo[:-2]
+            productos.append({
+                "codigo": codigo, "nombre": nombre, "marca": marca,
+                "seccion": seccion, "area": area,
+                "stock": int(numero(fila[5])), "precio": numero(fila[6]),
+                "tipo": "producto", "estado": "",
+            })
+
+    herramientas = []
+    if hoja is None:
+        avisos.append("No encontré la hoja de herramientas; se importaron solo los productos.")
+    else:
+        for fila in hoja.iter_rows(min_row=10, values_only=True):
+            codigo, nombre, _cat, marca, ubic = (limpio(fila[1]), limpio(fila[2]),
+                                                 limpio(fila[3]), limpio(fila[4]), limpio(fila[5]))
+            if not nombre:
+                continue
+            seccion, area = partir_ubicacion(ubic)
+            estado = limpio(fila[7]).lower()
+            estado = {"operativa": "buena", "operativo": "buena",
+                      "dañada": "dañada", "danada": "dañada",
+                      "en mantenimiento": "dañada", "perdida": "perdida"}.get(estado, "buena")
+            herramientas.append({
+                "codigo": codigo, "nombre": nombre, "marca": marca,
+                "seccion": seccion, "area": area,
+                "stock": int(numero(fila[6])), "precio": 0.0,
+                "tipo": "herramienta", "estado": estado,
+            })
+
+    return productos, herramientas, avisos
+
+
+@app.route("/productos/importar", methods=["GET", "POST"])
+@requiere_admin
+def importar_catalogo():
+    if request.method == "GET":
+        conn = get_db()
+        actuales = conn.execute("SELECT COUNT(*) AS n FROM productos").fetchone()["n"]
+        conn.close()
+        return render_template("importar.html", actuales=actuales)
+
+    archivo = request.files.get("archivo")
+    if not archivo or not archivo.filename.lower().endswith((".xlsx", ".xlsm")):
+        flash("Subí el archivo de Excel (.xlsx) del inventario.", "error")
+        return redirect(url_for("importar_catalogo"))
+
+    if request.form.get("confirmar") != "BORRAR Y REEMPLAZAR":
+        flash("Para reemplazar el catálogo hay que escribir la confirmación exacta.", "error")
+        return redirect(url_for("importar_catalogo"))
+
+    try:
+        productos, herramientas, avisos = leer_excel_inventario(archivo)
+    except Exception as exc:
+        flash(f"No pude leer el archivo: {exc}", "error")
+        return redirect(url_for("importar_catalogo"))
+
+    if not productos and not herramientas:
+        flash("El archivo no tenía ninguna fila con nombre. No se borró nada.", "error")
+        return redirect(url_for("importar_catalogo"))
+
+    respaldo = respaldar_base()
+
+    conn = get_db()
+    borrados = conn.execute("SELECT COUNT(*) AS n FROM productos").fetchone()["n"]
+    conn.execute("DELETE FROM productos")
+    for item in productos + herramientas:
+        conn.execute(
+            "INSERT INTO productos (codigo, nombre, tipo, precio, stock, seccion, area, marca, estado) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (item["codigo"] or None, item["nombre"], item["tipo"], item["precio"],
+             item["stock"], item["seccion"] or None, item["area"] or None,
+             item["marca"] or None, item["estado"] or None),
+        )
+    conn.commit()
+    conn.close()
+
+    sin_precio = sum(1 for p in productos if p["precio"] <= 0)
+    mensaje = (f"Catálogo reemplazado: se borraron {borrados} y se cargaron "
+               f"{len(productos)} productos y {len(herramientas)} herramientas.")
+    if sin_precio:
+        mensaje += f" Ojo: {sin_precio} productos quedaron sin precio."
+    flash(mensaje, "success")
+    flash(f"Respaldo de lo anterior guardado en {os.path.basename(respaldo)}.", "success")
+    for aviso in avisos:
+        flash(aviso, "error")
     return redirect(url_for("productos"))
 
 
