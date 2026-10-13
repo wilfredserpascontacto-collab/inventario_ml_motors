@@ -91,6 +91,43 @@
     });
 </script>
 
+{% if resumen %}
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="content-card p-3 h-100">
+            <div class="text-secondary small">
+                {% if seccion or area or busqueda %}Valor de lo filtrado{% else %}Valor del inventario{% endif %}
+            </div>
+            <div class="fs-4 fw-bold">${{ "{:,.2f}".format(resumen.valor) }}</div>
+            <div class="text-secondary small">a precio de venta</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="content-card p-3 h-100">
+            <div class="text-secondary small">Piezas en bodega</div>
+            <div class="fs-4 fw-bold">{{ "{:,}".format(resumen.piezas) }}</div>
+            <div class="text-secondary small">{{ resumen.articulos }} artículos distintos</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="content-card p-3 h-100">
+            <div class="text-secondary small">Herramientas</div>
+            <div class="fs-4 fw-bold">{{ resumen.herramientas }}</div>
+            <div class="text-secondary small">no suman dinero</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="content-card p-3 h-100">
+            <div class="text-secondary small">Sin precio</div>
+            <div class="fs-4 fw-bold {% if resumen.sin_precio %}text-danger{% endif %}">{{ resumen.sin_precio }}</div>
+            <div class="text-secondary small">
+                {% if resumen.sin_precio %}no entran en el total{% else %}todo tiene precio{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <table class="table table-striped align-middle">
     <thead>
         <tr>
