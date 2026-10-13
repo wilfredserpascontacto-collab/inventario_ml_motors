@@ -5,7 +5,9 @@ import sqlite3
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session, Response
+from flask import (Flask, render_template, request, redirect, url_for, flash,
+                   session, Response, send_from_directory, abort)
+from PIL import Image, ImageOps
 from werkzeug.security import generate_password_hash, check_password_hash
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -334,20 +336,37 @@ def nuevo_producto():
         codigo = request.form.get("codigo", "").strip()
         nombre = request.form["nombre"].strip()
         tipo = request.form["tipo"]
-        precio = float(request.form["precio"] or 0)
-        stock = int(request.form["stock"] or 0) if tipo == "producto" else 0
+        marca = request.form.get("marca", "").strip()
+        # Las herramientas son de uso interno: no se venden, así que no llevan
+        # precio por más que alguien escriba uno en el formulario.
+        precio = 0.0 if tipo == "herramienta" else float(request.form.get("precio") or 0)
+        stock = int(request.form.get("stock") or 0) if tipo != "servicio" else 0
         seccion = request.form.get("seccion", "").strip()
         area = request.form.get("area", "").strip().upper()
+        estado = request.form.get("estado", "").strip() if tipo == "herramienta" else ""
 
         if not nombre:
             flash("El nombre es obligatorio.", "error")
             return redirect(url_for("nuevo_producto"))
 
         conn = get_db()
-        conn.execute(
-            "INSERT INTO productos (codigo, nombre, tipo, precio, stock, seccion, area) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (codigo, nombre, tipo, precio, stock, seccion or None, area or None),
+        cur = conn.execute(
+            "INSERT INTO productos (codigo, nombre, tipo, precio, stock, seccion, area, marca, estado) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (codigo, nombre, tipo, precio, stock, seccion or None, area or None,
+             marca or None, estado or None),
         )
+        nuevo_id = cur.lastrowid
+
+        # La foto se guarda después del INSERT porque el nombre del archivo
+        # lleva el id del artículo, y el id no existe hasta que la fila existe.
+        foto = guardar_foto(request.files.get("foto"), nuevo_id)
+        if foto is False:
+            flash("El artículo se guardó, pero la foto no: ese formato no se "
+                  "pudo abrir. Probá con una foto JPG o PNG.", "error")
+        elif foto:
+            conn.execute("UPDATE productos SET foto = ? WHERE id = ?", (foto, nuevo_id))
+
         conn.commit()
         conn.close()
         flash(f'"{nombre}" se agregó al catálogo.', "success")
@@ -376,20 +395,40 @@ def editar_producto(producto_id):
         codigo = request.form.get("codigo", "").strip()
         nombre = request.form["nombre"].strip()
         tipo = request.form["tipo"]
-        precio = float(request.form["precio"] or 0)
-        stock = int(request.form["stock"] or 0) if tipo == "producto" else 0
+        marca = request.form.get("marca", "").strip()
+        precio = 0.0 if tipo == "herramienta" else float(request.form.get("precio") or 0)
+        stock = int(request.form.get("stock") or 0) if tipo != "servicio" else 0
         seccion = request.form.get("seccion", "").strip()
         area = request.form.get("area", "").strip().upper()
+        estado = request.form.get("estado", "").strip() if tipo == "herramienta" else ""
+
+        # Foto: si suben una nueva reemplaza a la anterior; si marcan «quitar»
+        # se va sin reemplazo. El archivo viejo se borra en los dos casos para
+        # no dejar basura en el disco del servidor.
+        foto = item["foto"]
+        subida = guardar_foto(request.files.get("foto"), producto_id)
+        if subida is False:
+            flash("Ese formato de foto no se pudo abrir, así que la foto no "
+                  "cambió. Probá con una foto JPG o PNG.", "error")
+        elif subida:
+            borrar_foto(item["foto"])
+            foto = subida
+        elif request.form.get("quitar_foto"):
+            borrar_foto(item["foto"])
+            foto = None
 
         fecha_cambio = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         campos = [
             ("codigo",  str(item["codigo"] or ""), codigo),
             ("nombre",  item["nombre"],             nombre),
             ("tipo",    item["tipo"],               tipo),
+            ("marca",   str(item["marca"] or ""),   marca),
             ("precio",  str(item["precio"]),        str(precio)),
             ("stock",   str(item["stock"]),         str(stock)),
             ("seccion", str(item["seccion"] or ""), seccion),
             ("area",    str(item["area"] or ""),    area),
+            ("estado",  str(item["estado"] or ""),  estado),
+            ("foto",    "sí" if item["foto"] else "no", "sí" if foto else "no"),
         ]
         for campo, ant, nvo in campos:
             if ant != nvo:
@@ -399,8 +438,10 @@ def editar_producto(producto_id):
                     (producto_id, nombre, campo, ant, nvo, fecha_cambio),
                 )
         conn.execute(
-            "UPDATE productos SET codigo = ?, nombre = ?, tipo = ?, precio = ?, stock = ?, seccion = ?, area = ? WHERE id = ?",
-            (codigo, nombre, tipo, precio, stock, seccion or None, area or None, producto_id),
+            "UPDATE productos SET codigo = ?, nombre = ?, tipo = ?, precio = ?, stock = ?, "
+            "seccion = ?, area = ?, marca = ?, estado = ?, foto = ? WHERE id = ?",
+            (codigo, nombre, tipo, precio, stock, seccion or None, area or None,
+             marca or None, estado or None, foto, producto_id),
         )
         conn.commit()
         conn.close()
@@ -461,6 +502,61 @@ def partir_ubicacion(texto):
     if m:
         return _pelar(m.group(1)), ""
     return t, ""
+
+
+def guardar_foto(archivo, producto_id):
+    """Guarda la foto que llega del celular y devuelve el nombre del archivo.
+
+    Una foto de teléfono pesa entre 3 y 8 MB y viene girada: el sensor graba
+    siempre en horizontal y anota la rotación en una etiqueta EXIF que el
+    navegador respeta pero el archivo no. Por eso aquí se endereza primero,
+    se achica a {lado} px de lado mayor y se reescribe como JPEG; así una
+    bodega entera de fotos ocupa megabytes y no gigabytes.
+
+    Devuelve el nombre del archivo, None si no venía nada, o False si el
+    formato no se pudo abrir.
+    """
+    if archivo is None or not getattr(archivo, "filename", ""):
+        return None
+    if os.path.splitext(archivo.filename)[1].lower() not in FOTO_EXTENSIONES:
+        return False
+    try:
+        imagen = Image.open(archivo.stream)
+        imagen = ImageOps.exif_transpose(imagen)
+        imagen = imagen.convert("RGB")
+        imagen.thumbnail((FOTO_LADO_MAX, FOTO_LADO_MAX))
+    except Exception:
+        return False
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    nombre = f"{producto_id}-{datetime.now():%Y%m%d%H%M%S}.jpg"
+    imagen.save(os.path.join(MEDIA_DIR, nombre), "JPEG",
+                quality=FOTO_CALIDAD, optimize=True)
+    return nombre
+
+
+def borrar_foto(nombre):
+    """Borra el archivo de una foto que ya nadie usa. Si no está, no pasa nada."""
+    if not nombre:
+        return
+    try:
+        os.remove(os.path.join(MEDIA_DIR, nombre))
+    except OSError:
+        pass
+
+
+@app.route("/fotos/<nombre>")
+def foto_producto(nombre):
+    """Entrega una foto del inventario.
+
+    Solo acepta los nombres que genera guardar_foto (id-fecha.jpg). Sin esa
+    comprobación, un nombre como ../inventario.db serviría la base entera.
+    """
+    if not re.fullmatch(r"\d+-\d{14}\.jpg", nombre):
+        abort(404)
+    ruta = os.path.join(MEDIA_DIR, nombre)
+    if not os.path.isfile(ruta):
+        abort(404)
+    return send_from_directory(MEDIA_DIR, nombre, max_age=60 * 60 * 24 * 30)
 
 
 def respaldar_base():
