@@ -4,11 +4,11 @@
 
     <!-- Encabezado: ML MOTORS + reloj -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
-        <h1 style="font-family:'Oswald',sans-serif; font-size:3rem; color:#ffffff; letter-spacing:4px; margin:0; line-height:1;">
+        <h1 style="font-family:'Oswald',sans-serif; font-size:clamp(1.9rem, 7vw, 3rem); color:#ffffff; letter-spacing:4px; margin:0; line-height:1;">
             ML MOTORS
         </h1>
         <div class="text-end">
-            <div id="reloj" style="font-size:2rem; font-weight:700; color:#ffffff; line-height:1.1; font-family:'Oswald',sans-serif; letter-spacing:2px;"></div>
+            <div id="reloj" style="font-size:clamp(1.4rem, 5.5vw, 2rem); font-weight:700; color:#ffffff; line-height:1.1; font-family:'Oswald',sans-serif; letter-spacing:2px;"></div>
             <div id="fecha" style="font-size:0.9rem; color:#6a8aaa; letter-spacing:.5px;"></div>
         </div>
     </div>
@@ -38,30 +38,30 @@
 
     <!-- Tarjetas de resumen -->
     <div class="row g-3">
-        <div class="col-md-4">
+        <div class="col-12 col-md-4 tarjeta-resumen">
             <div class="card text-center h-100" style="border-top:3px solid #3a7acc; border-radius:6px;">
                 <div class="card-body py-4">
-                    <div style="font-size:1.8rem;">&#x1F4E6;</div>
+                    <div class="emoji" style="font-size:1.8rem;">&#x1F4E6;</div>
                     <h5 class="card-title mt-2">PRODUCTOS EN CAT&Aacute;LOGO</h5>
                     <p class="display-5 fw-bold" style="color:#5aaae8; font-family:'Oswald',sans-serif;">{{ total_productos }}</p>
                     <a href="{{ url_for('productos') }}" class="btn btn-sm btn-outline-primary">Ver cat&aacute;logo</a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-4 tarjeta-resumen">
             <div class="card text-center h-100" style="border-top:3px solid #2a7a4a; border-radius:6px;">
                 <div class="card-body py-4">
-                    <div style="font-size:1.8rem;">&#x1F6D2;</div>
+                    <div class="emoji" style="font-size:1.8rem;">&#x1F6D2;</div>
                     <h5 class="card-title mt-2">VENTAS DE HOY</h5>
                     <p class="display-5 fw-bold" style="color:#3acc5a; font-family:'Oswald',sans-serif;">{{ ventas_hoy }}</p>
                     <a href="{{ url_for('caja') }}" class="btn btn-sm btn-outline-success">Ir a caja</a>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-4 tarjeta-resumen">
             <div class="card text-center h-100" style="border-top:3px solid #4a5a6a; border-radius:6px;">
                 <div class="card-body py-4">
-                    <div style="font-size:1.8rem;">&#x1F4B5;</div>
+                    <div class="emoji" style="font-size:1.8rem;">&#x1F4B5;</div>
                     <h5 class="card-title mt-2">TOTAL VENDIDO HOY</h5>
                     <p class="display-5 fw-bold" style="color:#e0e8f4; font-family:'Oswald',sans-serif;">${{ "%.2f"|format(total_hoy) }}</p>
                     <a href="{{ url_for('reportes') }}" class="btn btn-sm btn-outline-secondary">Ver reportes</a>
@@ -69,6 +69,18 @@
             </div>
         </div>
     </div>
+
+<style>
+    /* En el celular las tres tarjetas ocupaban una pantalla cada una y había
+       que bajar tres veces para ver un número. Se achican para que las tres
+       entren de un vistazo. */
+    @media (max-width: 767.98px) {
+        .tarjeta-resumen .card-body { padding: .9rem .8rem !important; }
+        .tarjeta-resumen .display-5 { font-size: 2rem; margin-bottom: .5rem; }
+        .tarjeta-resumen .card-title { font-size: .7rem; margin-top: .25rem !important; }
+        .tarjeta-resumen .emoji { font-size: 1.2rem !important; }
+    }
+</style>
 
 <script>
     const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];

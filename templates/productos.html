@@ -1,12 +1,18 @@
 {% extends "base.html" %}
 {% block titulo %}Productos - Inventario y Caja{% endblock %}
 {% block contenido %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Catálogo de productos y servicios</h1>
-    <div class="d-flex gap-2">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+    <h1 class="m-0">Catálogo de productos y servicios</h1>
+    {# En el celular los rótulos se acortan: tres botones largos empujaban el
+       buscador fuera de la primera pantalla, y buscar es a lo que se entra. #}
+    <div class="d-flex flex-wrap gap-2">
         <a href="{{ url_for('nuevo_producto') }}" class="btn btn-primary">+ Nuevo</a>
-        <a href="{{ url_for('importar_catalogo') }}" class="btn btn-outline-primary">Importar desde Excel</a>
-        <a href="{{ url_for('salir_productos') }}" class="btn btn-outline-secondary">Salir del modo administrador</a>
+        <a href="{{ url_for('importar_catalogo') }}" class="btn btn-outline-primary">
+            Importar<span class="d-none d-md-inline"> desde Excel</span>
+        </a>
+        <a href="{{ url_for('salir_productos') }}" class="btn btn-outline-secondary">
+            Salir<span class="d-none d-md-inline"> del modo administrador</span>
+        </a>
     </div>
 </div>
 
@@ -20,13 +26,13 @@
        </div>
        <div id="sugerencias" class="list-group position-absolute shadow-sm" style="z-index: 1000;"></div>
       </div>
-      <div class="col-lg-2">
+      <div class="col-6 col-lg-2">
         <select name="seccion" class="form-select" onchange="this.form.submit()">
             <option value="">Todas las secciones</option>
             {% for s in secciones %}<option value="{{ s.seccion }}" {% if seccion == s.seccion %}selected{% endif %}>Sección {{ s.seccion }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-lg-2">
+      <div class="col-6 col-lg-2">
         <select name="area" class="form-select" onchange="this.form.submit()">
             <option value="">Todas las áreas</option>
             {% for a in areas %}<option value="{{ a.area }}" {% if area == a.area %}selected{% endif %}>Área {{ a.area }}</option>{% endfor %}
@@ -92,7 +98,7 @@
 </script>
 
 {% if resumen %}
-<div class="row g-3 mb-3">
+<div class="row g-3 mb-3 resumen-catalogo">
     <div class="col-6 col-lg-3">
         <div class="content-card p-3 h-100">
             <div class="text-secondary small">
@@ -128,7 +134,95 @@
 </div>
 {% endif %}
 
-<table class="table table-striped align-middle">
+{# ---- Celular: una tarjeta por artículo. La tabla de siete columnas no
+      cabe en un teléfono y obliga a arrastrar de lado para ver el precio. ---- #}
+<div class="d-md-none">
+    {% for p in productos %}
+    <div class="ficha-movil">
+        <div class="ficha-nombre">{{ p.nombre }}</div>
+        <div class="ficha-codigo">{{ p.codigo or 'Sin código' }}{% if p.marca %} · {{ p.marca }}{% endif %}</div>
+
+        <div class="ficha-datos">
+            <div>
+                <div class="ficha-etiqueta">Precio</div>
+                <div class="ficha-valor">
+                    {% if p.tipo == 'herramienta' %}
+                        <span class="text-muted">uso interno</span>
+                    {% else %}
+                        ${{ "%.2f"|format(p.precio) }}
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="ficha-etiqueta">Stock</div>
+                <div class="ficha-valor">
+                    {% if p.tipo == 'servicio' %}
+                        —
+                    {% elif p.stock <= 0 %}
+                        <span class="text-danger">{{ p.stock }} · agotado</span>
+                    {% elif p.stock <= 5 %}
+                        <span class="text-warning">{{ p.stock }} · bajo</span>
+                    {% else %}
+                        {{ p.stock }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+            {% if p.seccion and p.area %}
+                <span class="badge bg-primary">Sección {{ p.seccion }} · {{ p.area }}</span>
+            {% else %}
+                <span class="badge bg-light text-dark">Sin ubicación</span>
+            {% endif %}
+            {% if p.tipo == 'servicio' %}
+                <span class="badge bg-info text-dark">Servicio</span>
+            {% elif p.tipo == 'herramienta' %}
+                <span class="badge bg-warning text-dark">Herramienta</span>
+            {% endif %}
+        </div>
+
+        <div class="d-flex gap-2 mt-3">
+            <a href="{{ url_for('editar_producto', producto_id=p.id) }}"
+               class="btn btn-sm btn-outline-secondary flex-fill">Editar</a>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-eliminar flex-fill"
+                    data-id="{{ p.id }}" data-nombre="{{ p.nombre | e }}">Eliminar</button>
+        </div>
+    </div>
+    {% else %}
+    <p class="text-center text-muted py-4">No hay nada que coincida con la búsqueda o los filtros.</p>
+    {% endfor %}
+</div>
+
+<style>
+    .ficha-movil {
+        background: #071224;
+        border: 1px solid #1a3060;
+        border-left: 3px solid #3a7acc;
+        border-radius: 8px;
+        padding: .85rem .9rem;
+        margin-bottom: .7rem;
+    }
+    .ficha-nombre { color: #f0f6ff; font-weight: 600; font-size: 1.02rem; line-height: 1.3; }
+    .ficha-codigo { color: #6a82a0; font-size: .82rem; margin-top: .15rem; }
+    .ficha-datos {
+        display: flex; gap: 1.5rem;
+        margin-top: .6rem; padding-top: .6rem;
+        border-top: 1px solid #16294a;
+    }
+    .ficha-etiqueta { color: #6a82a0; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; }
+    .ficha-valor { color: #e8f0fa; font-size: 1.05rem; font-weight: 600; }
+
+    /* Las cuatro tarjetas de resumen se achican en el celular para no empujar
+       la lista fuera de la pantalla. */
+    @media (max-width: 767.98px) {
+        .resumen-catalogo .content-card { padding: .6rem .7rem !important; }
+        .resumen-catalogo .fs-4 { font-size: 1.15rem !important; }
+        .resumen-catalogo .small { font-size: .72rem; line-height: 1.25; }
+    }
+</style>
+
+<table class="table table-striped align-middle d-none d-md-table">
     <thead>
         <tr>
             <th>Código</th>

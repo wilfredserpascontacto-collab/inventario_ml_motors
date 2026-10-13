@@ -120,19 +120,63 @@
         .text-danger { color: #e08080 !important; }
         .text-success { color: #3acc5a !important; }
         .text-warning { color: #c8b840 !important; }
+
+        /* ====================================================================
+           CELULAR
+           El sistema se usa caminando por la bodega, con una mano y a veces
+           con las manos sucias: todo lo que se toca tiene que ser grande y
+           nada se puede salir de lado.
+           ==================================================================== */
+        @media (max-width: 767.98px) {
+            body {
+                /* 'fixed' se traba y parpadea en Safari de iPhone al hacer
+                   scroll; con 'scroll' el fondo se mueve pero no salta. */
+                background-attachment: scroll;
+            }
+            .navbar { margin-bottom: 1rem !important; }
+            .navbar-brand { font-size: 1.15rem; letter-spacing: 1.5px; }
+            .navbar-collapse { padding-top: .5rem; }
+            .navbar .nav-link {
+                font-size: 1rem;
+                padding: .6rem .25rem;       /* alto cómodo para el dedo */
+                border-bottom: 1px solid #16294a;
+            }
+            .navbar .nav-link:last-child { border-bottom: none; }
+            .container { padding-left: .75rem; padding-right: .75rem; }
+            .content-card {
+                padding: 1.1rem .9rem;
+                border-radius: 10px;
+                box-shadow: 0 4px 20px rgba(0,0,0,.6);
+            }
+            h1 { font-size: 1.5rem; }
+            h2 { font-size: 1.3rem; }
+            /* Los campos por debajo de 16px hacen que iPhone acerque la
+               pantalla sola al tocarlos. */
+            .form-control, .form-select, .btn { font-size: 16px; }
+            .btn { padding: .55rem .9rem; }
+            .btn-sm { padding: .4rem .7rem; font-size: 15px; }
+            .alert { font-size: .95rem; }
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('inicio') }}">ML MOTORS</a>
-            <div class="navbar-nav">
-                <a class="nav-link" href="{{ url_for('inicio') }}">Inicio</a>
-                <a class="nav-link" href="{{ url_for('productos') }}">Productos</a>
-                <a class="nav-link" href="{{ url_for('caja') }}">Caja</a>
-                <a class="nav-link" href="{{ url_for('turnos') }}">Cortes de caja</a>
-                <a class="nav-link" href="{{ url_for('reportes') }}">Reportes</a>
-                <a class="nav-link" href="{{ url_for('configuracion') }}">Configuracion</a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#menuPrincipal" aria-controls="menuPrincipal"
+                    aria-expanded="false" aria-label="Abrir el menú">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="menuPrincipal">
+                <div class="navbar-nav ms-auto">
+                    <a class="nav-link" href="{{ url_for('inicio') }}">Inicio</a>
+                    <a class="nav-link" href="{{ url_for('productos') }}">Productos</a>
+                    <a class="nav-link" href="{{ url_for('caja') }}">Caja</a>
+                    <a class="nav-link" href="{{ url_for('turnos') }}">Cortes de caja</a>
+                    <a class="nav-link" href="{{ url_for('reportes') }}">Reportes</a>
+                    <a class="nav-link" href="{{ url_for('configuracion') }}">Configuracion</a>
+                </div>
             </div>
         </div>
     </nav>
@@ -154,5 +198,18 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Ninguna tabla de este sistema cabe a lo ancho de un teléfono. En vez
+        // de ir pantalla por pantalla, cada tabla se envuelve aquí en el
+        // contenedor con scroll de Bootstrap; así las que se agreguen después
+        // quedan arregladas solas.
+        document.querySelectorAll('table.table').forEach(function (tabla) {
+            if (tabla.parentElement.classList.contains('table-responsive')) return;
+            var caja = document.createElement('div');
+            caja.className = 'table-responsive';
+            tabla.parentNode.insertBefore(caja, tabla);
+            caja.appendChild(tabla);
+        });
+    </script>
 </body>
 </html>
