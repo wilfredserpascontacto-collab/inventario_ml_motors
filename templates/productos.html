@@ -118,11 +118,19 @@
             <td>
                 {% if p.tipo == 'servicio' %}
                     <span class="badge bg-info text-dark">Servicio</span>
+                {% elif p.tipo == 'herramienta' %}
+                    <span class="badge bg-warning text-dark">Herramienta</span>
                 {% else %}
                     <span class="badge bg-secondary">Producto</span>
                 {% endif %}
             </td>
-            <td>${{ "%.2f"|format(p.precio) }}</td>
+            <td>
+                {% if p.tipo == 'herramienta' %}
+                    <span class="text-muted">uso interno</span>
+                {% else %}
+                    ${{ "%.2f"|format(p.precio) }}
+                {% endif %}
+            </td>
             <td>
                 {% if p.tipo == 'servicio' %}
                     —
