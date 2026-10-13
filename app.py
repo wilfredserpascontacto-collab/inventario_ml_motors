@@ -419,15 +419,27 @@ def eliminar_producto(producto_id):
 # ---------- Importar el catálogo desde Excel ----------
 
 def partir_ubicacion(texto):
-    """'Sección 9 - Área C2' -> ('Sección 9', 'C2').  También acepta
-    'SECCION 2 - AREA B2' sin tildes y mayúsculas, que es como viene la
-    hoja de herramientas. Si no reconoce el formato, deja todo en sección."""
+    """'Sección 9 - Área C2' -> ('9', 'C2').  La sección se guarda pelada
+    porque las plantillas ya escriben la palabra «Sección» delante; si se
+    guardara completa saldría «Sección Sección 9».
+
+    Tolera lo que trae el libro de verdad: sin tildes y en mayúsculas
+    ('SECCION 2 - AREA B2'), sin guión ('Sección 8 Área C2') y con más de
+    un área ('Sección 7 - Área S1 , S2')."""
     t = (texto or "").strip()
     if not t:
         return "", ""
-    m = re.match(r"^\s*secci[oó]n\s*([\w-]+)\s*[-–]\s*[aá]rea\s*([\w-]+)\s*$", t, re.IGNORECASE)
+    m = re.match(
+        r"^\s*secci[oó]n\s*([\w-]+)\s*[-–]?\s*[aá]rea\s*([\w\s,.-]+?)\s*$",
+        t, re.IGNORECASE)
     if m:
-        return f"Sección {m.group(1)}", m.group(2).upper()
+        # 'S1 , S2' -> 'S1, S2'
+        area = ", ".join(p.strip().upper() for p in m.group(2).split(",") if p.strip())
+        return m.group(1).upper(), area
+    # Solo la sección, sin área: 'Sección 9'
+    m = re.match(r"^\s*secci[oó]n\s*([\w-]+)\s*$", t, re.IGNORECASE)
+    if m:
+        return m.group(1).upper(), ""
     return t, ""
 
 
