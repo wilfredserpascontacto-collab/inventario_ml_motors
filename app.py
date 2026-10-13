@@ -418,6 +418,12 @@ def eliminar_producto(producto_id):
 
 # ---------- Importar el catálogo desde Excel ----------
 
+def _pelar(texto):
+    """'9- ' -> '9'. El libro escribe el guión pegado al número ('Sección 9-
+    Área S2'), y si no se quita quedan dos secciones distintas: 9 y 9-."""
+    return (texto or "").strip().strip("-–.,").strip().upper()
+
+
 def partir_ubicacion(texto):
     """'Sección 9 - Área C2' -> ('9', 'C2').  La sección se guarda pelada
     porque las plantillas ya escriben la palabra «Sección» delante; si se
@@ -434,12 +440,12 @@ def partir_ubicacion(texto):
         t, re.IGNORECASE)
     if m:
         # 'S1 , S2' -> 'S1, S2'
-        area = ", ".join(p.strip().upper() for p in m.group(2).split(",") if p.strip())
-        return m.group(1).upper(), area
+        area = ", ".join(_pelar(p) for p in m.group(2).split(",") if _pelar(p))
+        return _pelar(m.group(1)), area
     # Solo la sección, sin área: 'Sección 9'
     m = re.match(r"^\s*secci[oó]n\s*([\w-]+)\s*$", t, re.IGNORECASE)
     if m:
-        return m.group(1).upper(), ""
+        return _pelar(m.group(1)), ""
     return t, ""
 
 
