@@ -287,6 +287,54 @@ def inicio():
 
 # ---------- Catálogo de productos ----------
 
+@app.route("/catalogo")
+def catalogo():
+    """Consulta del catálogo, sin contraseña y sin poder tocar nada.
+
+    La contraseña de /productos existe para que nadie cambie precios ni
+    existencias, pero de paso dejaba al personal sin poder mirar en qué
+    sección está una pieza o cuánto cuesta. Esta vista enseña lo mismo sin
+    un solo botón que modifique.
+
+    Las herramientas no aparecen: son de uso interno, no tienen precio y no
+    se venden. El valor total del inventario tampoco, porque esa cifra es
+    del dueño y aquí no hay contraseña que la proteja.
+    """
+    busqueda = request.args.get("q", "").strip()
+    seccion = request.args.get("seccion", "").strip()
+    area = request.args.get("area", "").strip().upper()
+    conn = get_db()
+    if busqueda:
+        items = buscar_productos(conn, busqueda)
+    else:
+        items = conn.execute(
+            "SELECT * FROM productos WHERE tipo <> 'herramienta' ORDER BY nombre"
+        ).fetchall()
+    items = [i for i in items if i["tipo"] != "herramienta"]
+    if seccion:
+        items = [i for i in items if (i["seccion"] or "") == seccion]
+    if area:
+        items = [i for i in items if (i["area"] or "").upper() == area]
+    secciones = conn.execute(
+        "SELECT DISTINCT seccion FROM productos "
+        "WHERE TRIM(COALESCE(seccion, '')) <> '' AND tipo <> 'herramienta' ORDER BY seccion"
+    ).fetchall()
+    areas = conn.execute(
+        "SELECT DISTINCT area FROM productos "
+        "WHERE TRIM(COALESCE(area, '')) <> '' AND tipo <> 'herramienta' ORDER BY area"
+    ).fetchall()
+    conn.close()
+    resumen = {
+        "articulos": len(items),
+        "piezas": sum((i["stock"] or 0) for i in items if i["tipo"] != "servicio"),
+    }
+    return render_template(
+        "catalogo.html", productos=items, busqueda=busqueda,
+        seccion=seccion, area=area, secciones=secciones, areas=areas,
+        resumen=resumen,
+    )
+
+
 @app.route("/productos")
 @requiere_admin
 def productos():
