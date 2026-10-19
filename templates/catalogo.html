@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block titulo %}Consultar el inventario — ML Motors{% endblock %}
+{% block contenido %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-1">
+    <h1 class="m-0">Consultar el inventario</h1>
+    {% if not session.get('es_admin') %}
+    <a href="{{ url_for('acceso_productos') }}" class="btn btn-outline-secondary btn-sm">
+        Entrar<span class="d-none d-md-inline"> como administrador</span>
+    </a>
+    {% endif %}
+</div>
+<p class="text-muted mb-3" style="font-size:.9rem;">
+    Precio, existencias y ubicación. Desde aquí no se cambia nada.
+</p>
+
+<form method="get" class="mb-3 position-relative">
+    <div class="row g-2">
+      <div class="col-lg-6">
+       <div class="input-group">
+        <input type="text" name="q" id="buscador" class="form-control"
+               placeholder="Buscar por código o nombre..."
+               value="{{ busqueda }}" autocomplete="off">
+        <button type="submit" class="btn btn-outline-primary">Buscar</button>
+       </div>
+       <div id="sugerencias" class="list-group position-absolute shadow-sm" style="z-index: 1000;"></div>
+      </div>
+      <div class="col-6 col-lg-2">
+        <select name="seccion" class="form-select" onchange="this.form.submit()">
+            <option value="">Todas las secciones</option>
+            {% for s in secciones %}<option value="{{ s.seccion }}" {% if seccion == s.seccion %}selected{% endif %}>Sección {{ s.seccion }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-lg-2">
+        <select name="area" class="form-select" onchange="this.form.submit()">
+            <option value="">Todas las áreas</option>
+            {% for a in areas %}<option value="{{ a.area }}" {% if area == a.area %}selected{% endif %}>Área {{ a.area }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-lg-2">
+        {% if busqueda or seccion or area %}
+        <a href="{{ url_for('catalogo') }}" class="btn btn-outline-secondary">Limpiar</a>
+        {% endif %}
+      </div>
+    </div>
+</form>
+
+<p class="text-muted mb-3" style="font-size:.88rem;">
+    {{ "{:,}".format(resumen.articulos) }} artículo{{ '' if resumen.articulos == 1 else 's' }}
+    &middot; {{ "{:,}".format(resumen.piezas) }} pieza{{ '' if resumen.piezas == 1 else 's' }} en bodega
+</p>
+
+{# ---- Celular: una tarjeta por artículo, igual que en el catálogo del
+      administrador, porque la tabla no cabe en un teléfono. ---- #}
+<div class="d-md-none">
+    {% for p in productos %}
+    <div class="ficha-movil">
+        <div class="d-flex gap-3">
+            {% if p.foto %}
+            <a href="{{ url_for('foto_producto', nombre=p.foto) }}" class="miniatura">
+                <img src="{{ url_for('foto_producto', nombre=p.foto) }}" alt="{{ p.nombre }}" loading="lazy">
+            </a>
+            {% endif %}
+            <div class="flex-grow-1 min-w-0">
+                <div class="ficha-nombre">{{ p.nombre }}</div>
+                <div class="ficha-codigo">{{ p.codigo or 'Sin código' }}{% if p.marca %} · {{ p.marca }}{% endif %}</div>
+            </div>
+        </div>
+
+        <div class="ficha-datos">
+            <div>
+                <div class="ficha-etiqueta">Precio</div>
+                <div class="ficha-valor">
+                    {% if p.precio %}
+                        ${{ "%.2f"|format(p.precio) }}
+                    {% else %}
+                        <span class="text-warning">Consultar</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="ficha-etiqueta">Stock</div>
+                <div class="ficha-valor">
+                    {% if p.tipo == 'servicio' %}
+                        —
+                    {% elif p.stock <= 0 %}
+                        <span class="text-danger">{{ p.stock }} · agotado</span>
+                    {% elif p.stock <= 5 %}
+                        <span class="text-warning">{{ p.stock }} · bajo</span>
+                    {% else %}
+                        {{ p.stock }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+            {% if p.seccion and p.area %}
+                <span class="badge bg-primary">Sección {{ p.seccion }} · {{ p.area }}</span>
+            {% elif p.seccion %}
+                <span class="badge bg-primary">Sección {{ p.seccion }}</span>
+            {% else %}
+                <span class="badge bg-light text-dark">Sin ubicación</span>
+            {% endif %}
+            {% if p.tipo == 'servicio' %}
+                <span class="badge bg-info text-dark">Servicio</span>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <p class="text-center text-muted py-4">No hay nada que coincida con la búsqueda o los filtros.</p>
+    {% endfor %}
+</div>
+
+<table class="table table-striped align-middle d-none d-md-table">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Ubicación</th>
+            <th>Tipo</th>
+            <th>Precio</th>
+            <th>Stock</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in productos %}
+        <tr>
+            <td>
+                {% if p.foto %}
+                <a href="{{ url_for('foto_producto', nombre=p.foto) }}" target="_blank">
+                    <img src="{{ url_for('foto_producto', nombre=p.foto) }}" class="mini-tabla" alt="{{ p.nombre }}" loading="lazy">
+                </a>
+                {% endif %}
+            </td>
+            <td>{{ p.codigo or '—' }}</td>
+            <td>{{ p.nombre }}{% if p.marca %}<div class="text-muted" style="font-size:.82rem;">{{ p.marca }}</div>{% endif %}</td>
+            <td>
+                {% if p.seccion and p.area %}
+                    <span class="badge bg-primary">Sección {{ p.seccion }} · {{ p.area }}</span>
+                {% elif p.seccion %}
+                    <span class="badge bg-primary">Sección {{ p.seccion }}</span>
+                {% else %}
+                    <span class="text-muted">Sin ubicación</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if p.tipo == 'servicio' %}
+                    <span class="badge bg-info text-dark">Servicio</span>
+                {% else %}
+                    <span class="badge bg-secondary">Producto</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if p.precio %}
+                    ${{ "%.2f"|format(p.precio) }}
+                {% else %}
+                    <span class="text-warning">Consultar</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if p.tipo == 'servicio' %}
+                    —
+                {% elif p.stock <= 0 %}
+                    <span class="text-danger fw-bold">{{ p.stock }} (agotado)</span>
+                {% elif p.stock <= 5 %}
+                    <span class="text-warning fw-bold">{{ p.stock }} (bajo)</span>
+                {% else %}
+                    {{ p.stock }}
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted">No hay nada que coincida con la búsqueda o los filtros.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<style>
+    .ficha-movil {
+        background: #071224;
+        border: 1px solid #1a3060;
+        border-left: 3px solid #3a7acc;
+        border-radius: 8px;
+        padding: .85rem .9rem;
+        margin-bottom: .7rem;
+    }
+    .ficha-nombre { color: #f0f6ff; font-weight: 600; font-size: 1.02rem; line-height: 1.3; }
+    .ficha-codigo { color: #6a82a0; font-size: .82rem; margin-top: .15rem; }
+    .ficha-datos {
+        display: flex; gap: 1.5rem;
+        margin-top: .6rem; padding-top: .6rem;
+        border-top: 1px solid #16294a;
+    }
+    .ficha-etiqueta { color: #6a82a0; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; }
+    .ficha-valor { color: #e8f0fa; font-size: 1.05rem; font-weight: 600; }
+    .min-w-0 { min-width: 0; }
+
+    .miniatura {
+        width: 64px; height: 64px; flex-shrink: 0;
+        border-radius: 6px; overflow: hidden;
+        border: 1px solid #1a3060; background: #050d1c;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .miniatura img { width: 100%; height: 100%; object-fit: cover; }
+    .mini-tabla {
+        width: 46px; height: 46px; object-fit: cover;
+        border-radius: 5px; border: 1px solid #1a3060;
+    }
+</style>
+
+<script>
+    // El buscador sugiere mientras se escribe. Usa la misma consulta que el
+    // catálogo del administrador, que ya funciona sin contraseña.
+    const inputBuscador = document.getElementById('buscador');
+    const cajaSugerencias = document.getElementById('sugerencias');
+    let temporizador = null;
+
+    inputBuscador.addEventListener('input', () => {
+        clearTimeout(temporizador);
+        const texto = inputBuscador.value.trim();
+        if (texto.length < 2) {
+            cajaSugerencias.innerHTML = '';
+            return;
+        }
+        temporizador = setTimeout(() => {
+            fetch('/api/buscar_productos?q=' + encodeURIComponent(texto))
+                .then(r => r.json())
+                .then(datos => {
+                    cajaSugerencias.innerHTML = '';
+                    (datos.resultados || []).slice(0, 8).forEach(p => {
+                        if (p.tipo === 'herramienta') return;
+                        const fila = document.createElement('button');
+                        fila.type = 'button';
+                        fila.className = 'list-group-item list-group-item-action';
+                        fila.textContent = (p.codigo ? p.codigo + ' — ' : '') + p.nombre;
+                        fila.addEventListener('click', () => {
+                            inputBuscador.value = p.nombre;
+                            cajaSugerencias.innerHTML = '';
+                            inputBuscador.form.submit();
+                        });
+                        cajaSugerencias.appendChild(fila);
+                    });
+                })
+                .catch(() => { cajaSugerencias.innerHTML = ''; });
+        }, 250);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!cajaSugerencias.contains(e.target) && e.target !== inputBuscador) {
+            cajaSugerencias.innerHTML = '';
+        }
+    });
+</script>
+
+{% endblock %}
