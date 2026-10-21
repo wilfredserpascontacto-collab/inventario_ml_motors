@@ -246,6 +246,12 @@ def api_buscar_productos():
     items = buscar_productos(conn, texto, solo_disponibles=solo_disponibles) if texto else []
     conn.close()
 
+    # Sin contraseña, esta búsqueda solo alimenta la pantalla de consulta, que
+    # no enseña herramientas: son de uso interno y no se venden. Si no se
+    # filtran aquí, se asomarían en las sugerencias del buscador.
+    if not session.get("es_admin"):
+        items = [p for p in items if p["tipo"] != "herramienta"]
+
     return {
         "resultados": [
             {
@@ -750,6 +756,7 @@ def importar_catalogo():
 # ---------- Caja / punto de venta ----------
 
 @app.route("/caja")
+@requiere_admin
 def caja():
     conn = get_db()
     turno = obtener_turno_abierto(conn)
@@ -761,6 +768,7 @@ def caja():
 
 
 @app.route("/caja/abrir", methods=["POST"])
+@requiere_admin
 def abrir_caja():
     conn = get_db()
     if obtener_turno_abierto(conn) is not None:
@@ -786,6 +794,7 @@ def abrir_caja():
 
 
 @app.route("/caja/cerrar", methods=["GET", "POST"])
+@requiere_admin
 def cerrar_caja():
     conn = get_db()
     turno = obtener_turno_abierto(conn)
@@ -836,6 +845,7 @@ def cerrar_caja():
 
 
 @app.route("/caja/turnos")
+@requiere_admin
 def turnos():
     conn = get_db()
     items = conn.execute(
@@ -846,6 +856,7 @@ def turnos():
 
 
 @app.route("/caja/vender", methods=["POST"])
+@requiere_admin
 def vender():
     """Recibe el carrito como listas paralelas: producto_id[] y cantidad[]."""
     conn_turno = get_db()
@@ -929,6 +940,7 @@ def vender():
 
 
 @app.route("/caja/recibo/<int:venta_id>")
+@requiere_admin
 def recibo(venta_id):
     conn = get_db()
     venta = conn.execute("SELECT * FROM ventas WHERE id = ?", (venta_id,)).fetchone()
@@ -943,6 +955,7 @@ def recibo(venta_id):
 
 
 @app.route("/caja/recibo/<int:venta_id>/cancelar", methods=["POST"])
+@requiere_admin
 def cancelar_venta(venta_id):
     contrasena = request.form.get("contrasena", "")
     motivo = request.form.get("motivo", "").strip()
@@ -993,6 +1006,7 @@ def cancelar_venta(venta_id):
 # ---------- Configuración ----------
 
 @app.route("/configuracion", methods=["GET", "POST"])
+@requiere_admin
 def configuracion():
     if request.method == "POST":
         actual = request.form.get("contrasena_actual", "")
@@ -1016,6 +1030,7 @@ def configuracion():
 # ---------- Reportes ----------
 
 @app.route("/reportes")
+@requiere_admin
 def reportes():
     fecha_desde = request.args.get("fecha_desde", "").strip()
     fecha_hasta = request.args.get("fecha_hasta", "").strip()
@@ -1074,6 +1089,7 @@ def reportes():
 
 
 @app.route("/reportes/exportar/excel")
+@requiere_admin
 def exportar_excel():
     fecha_desde = request.args.get("fecha_desde", "").strip()
     fecha_hasta = request.args.get("fecha_hasta", "").strip()
