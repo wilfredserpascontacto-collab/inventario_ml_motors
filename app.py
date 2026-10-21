@@ -40,6 +40,21 @@ ESTADOS_HERRAMIENTA = ("buena", "dañada", "perdida")
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave-secreta-local-inventario")
 
+# Los precios se guardan sin IVA, que es como los lleva el negocio, pero el
+# cliente paga con IVA. Mostrar el precio pelado hacía que alguien contestara
+# "cien dólares" por una pieza de ciento trece. El porcentaje vive aquí, en un
+# solo lugar, para que el día que cambie no haya que buscarlo por todo el
+# sistema.
+IVA = 0.13
+
+
+def con_iva(precio):
+    """Lo que de verdad paga el cliente por algo cuyo precio se guarda sin IVA."""
+    return round((precio or 0) * (1 + IVA), 2)
+
+
+app.jinja_env.filters["con_iva"] = con_iva
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
