@@ -170,12 +170,20 @@
             </button>
             <div class="collapse navbar-collapse" id="menuPrincipal">
                 <div class="navbar-nav ms-auto">
+                    {# Sin contraseña solo se ofrece la consulta. Enseñar botones
+                       que rebotan a una contraseña no sirve de nada, y de paso
+                       anuncia a cualquiera que ahí dentro hay caja y reportes. #}
                     <a class="nav-link" href="{{ url_for('inicio') }}">Consultar</a>
+                    {% if session.get('es_admin') %}
                     <a class="nav-link" href="{{ url_for('productos') }}">Productos</a>
                     <a class="nav-link" href="{{ url_for('caja') }}">Caja</a>
                     <a class="nav-link" href="{{ url_for('turnos') }}">Cortes de caja</a>
                     <a class="nav-link" href="{{ url_for('reportes') }}">Reportes</a>
                     <a class="nav-link" href="{{ url_for('configuracion') }}">Configuracion</a>
+                    <a class="nav-link" href="{{ url_for('salir_productos') }}">Salir</a>
+                    {% else %}
+                    <a class="nav-link" href="{{ url_for('acceso_productos') }}">Entrar</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
