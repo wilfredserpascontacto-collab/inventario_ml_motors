@@ -11,7 +11,7 @@
     {% endif %}
 </div>
 <p class="text-muted mb-3" style="font-size:.9rem;">
-    Precio, existencias y ubicación. Desde aquí no se cambia nada.
+    Precio con IVA incluido, existencias y ubicación. Desde aquí no se cambia nada.
 </p>
 
 <form method="get" class="mb-3 position-relative">
@@ -72,7 +72,8 @@
                 <div class="ficha-etiqueta">Precio</div>
                 <div class="ficha-valor">
                     {% if p.precio %}
-                        ${{ "%.2f"|format(p.precio) }}
+                        ${{ "%.2f"|format(p.precio|con_iva) }}
+                        <div class="precio-neto">${{ "%.2f"|format(p.precio) }} sin IVA</div>
                     {% else %}
                         <span class="text-warning">Consultar</span>
                     {% endif %}
@@ -154,7 +155,8 @@
             </td>
             <td>
                 {% if p.precio %}
-                    ${{ "%.2f"|format(p.precio) }}
+                    ${{ "%.2f"|format(p.precio|con_iva) }}
+                    <div class="precio-neto">${{ "%.2f"|format(p.precio) }} sin IVA</div>
                 {% else %}
                     <span class="text-warning">Consultar</span>
                 {% endif %}
@@ -195,6 +197,9 @@
     }
     .ficha-etiqueta { color: #6a82a0; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; }
     .ficha-valor { color: #e8f0fa; font-size: 1.05rem; font-weight: 600; }
+    /* El neto va debajo y en chiquito: sirve para el crédito fiscal, pero lo
+       que el personal necesita contestar de un vistazo es lo que paga el cliente. */
+    .precio-neto { color: #6a82a0; font-size: .74rem; font-weight: 400; line-height: 1.3; margin-top: .1rem; }
     .min-w-0 { min-width: 0; }
 
     .miniatura {
