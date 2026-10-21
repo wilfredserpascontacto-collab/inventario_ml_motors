@@ -264,37 +264,21 @@ def api_buscar_productos():
     }
 
 
-# ---------- Inicio ----------
+# ---------- Inicio: el catálogo, en modo consulta ----------
 
 @app.route("/")
 def inicio():
-    conn = get_db()
-    total_productos = conn.execute("SELECT COUNT(*) AS c FROM productos").fetchone()["c"]
-    ventas_hoy = conn.execute(
-        "SELECT COUNT(*) AS c, COALESCE(SUM(total), 0) AS suma FROM ventas WHERE fecha LIKE ?",
-        (datetime.now().strftime("%Y-%m-%d") + "%",),
-    ).fetchone()
-    turno = obtener_turno_abierto(conn)
-    conn.close()
-    return render_template(
-        "inicio.html",
-        total_productos=total_productos,
-        ventas_hoy=ventas_hoy["c"],
-        total_hoy=ventas_hoy["suma"],
-        turno=turno,
-    )
+    """Lo primero que se ve al entrar son los repuestos, sin contraseña.
 
+    Antes aquí había un tablero con el reloj, el estado de la caja y lo
+    vendido del día. Quien entra viene a buscar una pieza, no a mirar un
+    resumen, así que la primera pantalla es el catálogo. El estado de la
+    caja sigue a la vista al entrar a Caja, y lo vendido en Reportes.
 
-# ---------- Catálogo de productos ----------
-
-@app.route("/catalogo")
-def catalogo():
-    """Consulta del catálogo, sin contraseña y sin poder tocar nada.
-
-    La contraseña de /productos existe para que nadie cambie precios ni
-    existencias, pero de paso dejaba al personal sin poder mirar en qué
-    sección está una pieza o cuánto cuesta. Esta vista enseña lo mismo sin
-    un solo botón que modifique.
+    Desde aquí no se cambia nada: ni un botón que modifique. La contraseña
+    de /productos existe para que nadie toque precios ni existencias, pero
+    de paso dejaba al personal sin poder mirar en qué sección está una
+    pieza o cuánto cuesta, y eso es justo lo que esta pantalla resuelve.
 
     Las herramientas no aparecen: son de uso interno, no tienen precio y no
     se venden. El valor total del inventario tampoco, porque esa cifra es
@@ -334,6 +318,18 @@ def catalogo():
         resumen=resumen,
     )
 
+
+@app.route("/catalogo")
+def catalogo():
+    """Dirección anterior del catálogo.
+
+    La dejamos redirigiendo a la entrada para que no se rompa ningún
+    enlace que alguien haya guardado en el celular.
+    """
+    return redirect(url_for("inicio"))
+
+
+# ---------- Catálogo de productos (administrador) ----------
 
 @app.route("/productos")
 @requiere_admin
