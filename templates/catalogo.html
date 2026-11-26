@@ -16,7 +16,7 @@
 
 <form method="get" class="mb-3 position-relative">
     <div class="row g-2">
-      <div class="col-lg-6">
+      <div class="col-lg-4">
        <div class="input-group">
         <input type="text" name="q" id="buscador" class="form-control"
                placeholder="Buscar por código o nombre..."
@@ -24,6 +24,12 @@
         <button type="submit" class="btn btn-outline-primary">Buscar</button>
        </div>
        <div id="sugerencias" class="list-group position-absolute shadow-sm" style="z-index: 1000;"></div>
+      </div>
+      <div class="col-12 col-lg-3">
+        <select name="maquina" class="form-select" onchange="this.form.submit()">
+            <option value="">Todas las máquinas</option>
+            {% for m in maquinas %}<option value="{{ m }}" {% if maquina == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+        </select>
       </div>
       <div class="col-6 col-lg-2">
         <select name="seccion" class="form-select" onchange="this.form.submit()">
@@ -37,8 +43,8 @@
             {% for a in areas %}<option value="{{ a.area }}" {% if area == a.area %}selected{% endif %}>Área {{ a.area }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-lg-2">
-        {% if busqueda or seccion or area %}
+      <div class="col-lg-1">
+        {% if busqueda or seccion or area or maquina %}
         <a href="{{ url_for('inicio') }}" class="btn btn-outline-secondary">Limpiar</a>
         {% endif %}
       </div>
@@ -64,6 +70,7 @@
             <div class="flex-grow-1 min-w-0">
                 <div class="ficha-nombre">{{ p.nombre }}</div>
                 <div class="ficha-codigo">{{ p.codigo or 'Sin código' }}{% if p.marca %} · {{ p.marca }}{% endif %}</div>
+                {% if p.maquina %}<div class="ficha-maquina">{{ p.maquina }}</div>{% endif %}
             </div>
         </div>
 
@@ -136,7 +143,8 @@
                 {% endif %}
             </td>
             <td>{{ p.codigo or '—' }}</td>
-            <td>{{ p.nombre }}{% if p.marca %}<div class="text-muted" style="font-size:.82rem;">{{ p.marca }}</div>{% endif %}</td>
+            <td>{{ p.nombre }}{% if p.marca %}<div class="text-muted" style="font-size:.82rem;">{{ p.marca }}</div>{% endif %}
+                {% if p.maquina %}<div class="ficha-maquina">{{ p.maquina }}</div>{% endif %}</td>
             <td>
                 {% if p.seccion and p.area %}
                     <span class="badge bg-primary">Sección {{ p.seccion }} · {{ p.area }}</span>
@@ -201,6 +209,7 @@
        que el personal necesita contestar de un vistazo es lo que paga el cliente. */
     .precio-neto { color: #6a82a0; font-size: .74rem; font-weight: 400; line-height: 1.3; margin-top: .1rem; }
     .min-w-0 { min-width: 0; }
+    .ficha-maquina { color: #e0b45a; font-size: .8rem; margin-top: .15rem; }
 
     .miniatura {
         width: 64px; height: 64px; flex-shrink: 0;

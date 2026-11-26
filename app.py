@@ -37,6 +37,23 @@ FOTO_EXTENSIONES = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
 TIPOS_VALIDOS = ("producto", "servicio", "herramienta")
 ESTADOS_HERRAMIENTA = ("buena", "dañada", "perdida")
 
+# A qué máquina pertenece cada repuesto. Sin este dato, para cotizar «todos los
+# filtros del 5080 KXY» había que adivinar por la marca del motor o por el
+# nombre. La lista sale de lo que hay en bodega; el formulario la sugiere pero
+# deja escribir una nueva, y las que se escriban se suman solas a los filtros.
+MAQUINAS = (
+    "Camión FAW J6F",
+    "Camión FAW TVR / VR",
+    "Camión FAW 5080 KXY (3.5 t)",
+    "Volqueta FAW J6P",
+    "Minicargador LT60 Plus",
+    "Retroexcavadora 388",
+    "Retroexcavadora XCMG",
+    "Concretera trompo",
+    "Montacargas",
+    "Varios / universal",
+)
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "clave-secreta-local-inventario")
 
@@ -89,6 +106,9 @@ def migrar_db():
     # Solo aplica a las herramientas: buena / dañada / perdida.
     if "estado" not in columnas_productos:
         conn.execute("ALTER TABLE productos ADD COLUMN estado TEXT")
+    # A qué máquina pertenece el repuesto (ver MAQUINAS). Vacío = sin asignar.
+    if "maquina" not in columnas_productos:
+        conn.execute("ALTER TABLE productos ADD COLUMN maquina TEXT")
     columnas_ventas = [fila["name"] for fila in conn.execute("PRAGMA table_info(ventas)").fetchall()]
     if "cancelada" not in columnas_ventas:
         conn.execute("ALTER TABLE ventas ADD COLUMN cancelada INTEGER NOT NULL DEFAULT 0")
@@ -241,7 +261,7 @@ def buscar_productos(conn, texto, solo_disponibles=False):
     resultados = []
     for fila in filas:
         texto_producto = (
-            f"{fila['codigo'] or ''} {fila['nombre']} "
+            f"{fila['codigo'] or ''} {fila['nombre']} {fila['maquina'] or ''} "
             f"seccion {fila['seccion'] or ''} area {fila['area'] or ''}"
         ).lower()
         coincidencias = sum(1 for palabra in palabras if palabra in texto_producto)
@@ -278,11 +298,32 @@ def api_buscar_productos():
                 "stock": p["stock"],
                 "seccion": p["seccion"] or "",
                 "area": p["area"] or "",
+                "maquina": p["maquina"] or "",
                 "disponible": (p["tipo"] == "servicio" or p["stock"] > 0),
             }
             for p in items[:15]
         ]
     }
+
+
+def lista_maquinas(conn, incluir_herramientas=True):
+    """Las máquinas para el filtro y el formulario: las de MAQUINAS primero,
+    en su orden, y después cualquier otra que alguien haya escrito a mano."""
+    filtro = "" if incluir_herramientas else " AND tipo <> 'herramienta'"
+    en_uso = [f["maquina"] for f in conn.execute(
+        "SELECT DISTINCT maquina FROM productos "
+        "WHERE TRIM(COALESCE(maquina, '')) <> ''" + filtro + " ORDER BY maquina"
+    ).fetchall()]
+    return list(MAQUINAS) + [m for m in en_uso if m not in MAQUINAS]
+
+
+def filtrar_por_maquina(items, maquina):
+    """«sin» muestra lo que todavía no tiene máquina, para irlo completando."""
+    if maquina == "sin":
+        return [i for i in items if not (i["maquina"] or "").strip()]
+    if maquina:
+        return [i for i in items if (i["maquina"] or "") == maquina]
+    return items
 
 
 # ---------- Inicio: el catálogo, en modo consulta ----------
@@ -308,6 +349,7 @@ def inicio():
     busqueda = request.args.get("q", "").strip()
     seccion = request.args.get("seccion", "").strip()
     area = request.args.get("area", "").strip().upper()
+    maquina = request.args.get("maquina", "").strip()
     conn = get_db()
     if busqueda:
         items = buscar_productos(conn, busqueda)
@@ -316,6 +358,7 @@ def inicio():
             "SELECT * FROM productos WHERE tipo <> 'herramienta' ORDER BY nombre"
         ).fetchall()
     items = [i for i in items if i["tipo"] != "herramienta"]
+    items = filtrar_por_maquina(items, maquina)
     if seccion:
         items = [i for i in items if (i["seccion"] or "") == seccion]
     if area:
@@ -328,6 +371,7 @@ def inicio():
         "SELECT DISTINCT area FROM productos "
         "WHERE TRIM(COALESCE(area, '')) <> '' AND tipo <> 'herramienta' ORDER BY area"
     ).fetchall()
+    maquinas = lista_maquinas(conn, incluir_herramientas=False)
     conn.close()
     resumen = {
         "articulos": len(items),
@@ -336,6 +380,7 @@ def inicio():
     return render_template(
         "catalogo.html", productos=items, busqueda=busqueda,
         seccion=seccion, area=area, secciones=secciones, areas=areas,
+        maquina=maquina, maquinas=maquinas,
         resumen=resumen,
     )
 
@@ -358,11 +403,13 @@ def productos():
     busqueda = request.args.get("q", "").strip()
     seccion = request.args.get("seccion", "").strip()
     area = request.args.get("area", "").strip().upper()
+    maquina = request.args.get("maquina", "").strip()
     conn = get_db()
     if busqueda:
         items = buscar_productos(conn, busqueda)
     else:
         items = conn.execute("SELECT * FROM productos ORDER BY nombre").fetchall()
+    items = filtrar_por_maquina(items, maquina)
     if seccion:
         items = [item for item in items if (item["seccion"] or "") == seccion]
     if area:
@@ -373,6 +420,10 @@ def productos():
     areas = conn.execute(
         "SELECT DISTINCT area FROM productos WHERE TRIM(COALESCE(area, '')) <> '' ORDER BY area"
     ).fetchall()
+    maquinas = lista_maquinas(conn)
+    sin_maquina = conn.execute(
+        "SELECT COUNT(*) FROM productos WHERE TRIM(COALESCE(maquina, '')) = '' AND tipo = 'producto'"
+    ).fetchone()[0]
     conn.close()
     # El resumen se calcula sobre lo que está en pantalla, así que con un
     # filtro puesto contesta «cuánto hay en la Sección 9» y sin filtro
@@ -390,6 +441,7 @@ def productos():
     return render_template(
         "productos.html", productos=items, busqueda=busqueda,
         seccion=seccion, area=area, secciones=secciones, areas=areas,
+        maquina=maquina, maquinas=maquinas, sin_maquina=sin_maquina,
         resumen=resumen,
     )
 
@@ -408,6 +460,7 @@ def nuevo_producto():
         stock = int(request.form.get("stock") or 0) if tipo != "servicio" else 0
         seccion = request.form.get("seccion", "").strip()
         area = request.form.get("area", "").strip().upper()
+        maquina = request.form.get("maquina", "").strip()
         estado = request.form.get("estado", "").strip() if tipo == "herramienta" else ""
 
         if not nombre:
@@ -416,10 +469,10 @@ def nuevo_producto():
 
         conn = get_db()
         cur = conn.execute(
-            "INSERT INTO productos (codigo, nombre, tipo, precio, stock, seccion, area, marca, estado) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO productos (codigo, nombre, tipo, precio, stock, seccion, area, marca, estado, maquina) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (codigo, nombre, tipo, precio, stock, seccion or None, area or None,
-             marca or None, estado or None),
+             marca or None, estado or None, maquina or None),
         )
         nuevo_id = cur.lastrowid
 
@@ -437,7 +490,10 @@ def nuevo_producto():
         flash(f'"{nombre}" se agregó al catálogo.', "success")
         return redirect(url_for("productos"))
 
-    return render_template("form_producto.html", producto=None)
+    conn = get_db()
+    maquinas = lista_maquinas(conn)
+    conn.close()
+    return render_template("form_producto.html", producto=None, maquinas=maquinas)
 
 
 @app.route("/productos/<int:producto_id>/editar", methods=["GET", "POST"])
@@ -465,6 +521,7 @@ def editar_producto(producto_id):
         stock = int(request.form.get("stock") or 0) if tipo != "servicio" else 0
         seccion = request.form.get("seccion", "").strip()
         area = request.form.get("area", "").strip().upper()
+        maquina = request.form.get("maquina", "").strip()
         estado = request.form.get("estado", "").strip() if tipo == "herramienta" else ""
 
         # Foto: si suben una nueva reemplaza a la anterior; si marcan «quitar»
@@ -492,6 +549,7 @@ def editar_producto(producto_id):
             ("stock",   str(item["stock"]),         str(stock)),
             ("seccion", str(item["seccion"] or ""), seccion),
             ("area",    str(item["area"] or ""),    area),
+            ("maquina", str(item["maquina"] or ""), maquina),
             ("estado",  str(item["estado"] or ""),  estado),
             ("foto",    "sí" if item["foto"] else "no", "sí" if foto else "no"),
         ]
@@ -504,17 +562,62 @@ def editar_producto(producto_id):
                 )
         conn.execute(
             "UPDATE productos SET codigo = ?, nombre = ?, tipo = ?, precio = ?, stock = ?, "
-            "seccion = ?, area = ?, marca = ?, estado = ?, foto = ? WHERE id = ?",
+            "seccion = ?, area = ?, marca = ?, estado = ?, foto = ?, maquina = ? WHERE id = ?",
             (codigo, nombre, tipo, precio, stock, seccion or None, area or None,
-             marca or None, estado or None, foto, producto_id),
+             marca or None, estado or None, foto, maquina or None, producto_id),
         )
         conn.commit()
         conn.close()
         flash(f'"{nombre}" se actualizó.', "success")
         return redirect(url_for("productos"))
 
+    maquinas = lista_maquinas(conn)
     conn.close()
-    return render_template("form_producto.html", producto=item)
+    return render_template("form_producto.html", producto=item, maquinas=maquinas)
+
+
+@app.route("/productos/asignar_maquina", methods=["POST"])
+@requiere_admin
+def asignar_maquina():
+    """Pone la misma máquina a varios artículos de una vez.
+
+    Con más de doscientos repuestos, abrir uno por uno y escribir la
+    contraseña cada vez no se termina nunca. Aquí se marcan en la lista,
+    se escoge la máquina y se confirma una sola vez. Cada cambio queda en
+    el historial igual que si se hubiera editado a mano."""
+    volver = request.form.get("volver") or url_for("productos")
+    if not volver.startswith("/") or volver.startswith("//"):
+        volver = url_for("productos")
+    if not verificar_contrasena_admin(request.form.get("contrasena", "")):
+        flash("Contraseña de administrador incorrecta. No se cambió nada.", "error")
+        return redirect(volver)
+
+    ids = [int(i) for i in request.form.getlist("ids") if i.isdigit()]
+    maquina = request.form.get("maquina", "").strip()
+    if not ids:
+        flash("No marcaste ningún artículo.", "error")
+        return redirect(volver)
+
+    conn = get_db()
+    fecha_cambio = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cambiados = 0
+    for producto_id in ids:
+        item = conn.execute("SELECT id, nombre, maquina FROM productos WHERE id = ?",
+                            (producto_id,)).fetchone()
+        if item is None or (item["maquina"] or "") == maquina:
+            continue
+        conn.execute(
+            "INSERT INTO historial_productos (producto_id, nombre_producto, campo, valor_anterior, valor_nuevo, fecha) "
+            "VALUES (?, ?, 'maquina', ?, ?, ?)",
+            (producto_id, item["nombre"], item["maquina"] or "", maquina, fecha_cambio),
+        )
+        conn.execute("UPDATE productos SET maquina = ? WHERE id = ?", (maquina or None, producto_id))
+        cambiados += 1
+    conn.commit()
+    conn.close()
+    destino = maquina or "sin máquina"
+    flash(f"{cambiados} artículo{'' if cambiados == 1 else 's'} quedaron en «{destino}».", "success")
+    return redirect(volver)
 
 
 @app.route("/productos/<int:producto_id>/eliminar", methods=["POST"])

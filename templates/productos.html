@@ -18,13 +18,20 @@
 
 <form method="get" class="mb-3 position-relative">
     <div class="row g-2">
-      <div class="col-lg-6">
+      <div class="col-lg-4">
        <div class="input-group">
         <input type="text" name="q" id="buscador" class="form-control" placeholder="Buscar por código o nombre..."
                value="{{ busqueda }}" autocomplete="off">
         <button type="submit" class="btn btn-outline-primary">Buscar</button>
        </div>
        <div id="sugerencias" class="list-group position-absolute shadow-sm" style="z-index: 1000;"></div>
+      </div>
+      <div class="col-12 col-lg-3">
+        <select name="maquina" class="form-select" onchange="this.form.submit()">
+            <option value="">Todas las máquinas</option>
+            <option value="sin" {% if maquina == 'sin' %}selected{% endif %}>Sin máquina asignada ({{ sin_maquina }})</option>
+            {% for m in maquinas %}<option value="{{ m }}" {% if maquina == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
+        </select>
       </div>
       <div class="col-6 col-lg-2">
         <select name="seccion" class="form-select" onchange="this.form.submit()">
@@ -38,8 +45,8 @@
             {% for a in areas %}<option value="{{ a.area }}" {% if area == a.area %}selected{% endif %}>Área {{ a.area }}</option>{% endfor %}
         </select>
       </div>
-      <div class="col-lg-2">
-        {% if busqueda or seccion or area %}
+      <div class="col-lg-1">
+        {% if busqueda or seccion or area or maquina %}
         <a href="{{ url_for('productos') }}" class="btn btn-outline-secondary">Limpiar</a>
         {% endif %}
       </div>
@@ -152,6 +159,7 @@
             <div class="flex-grow-1 min-w-0">
                 <div class="ficha-nombre">{{ p.nombre }}</div>
                 <div class="ficha-codigo">{{ p.codigo or 'Sin código' }}{% if p.marca %} · {{ p.marca }}{% endif %}</div>
+                {% if p.maquina %}<div class="ficha-maquina">{{ p.maquina }}</div>{% endif %}
             </div>
         </div>
 
@@ -225,6 +233,7 @@
     }
     .ficha-etiqueta { color: #6a82a0; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; }
     .ficha-valor { color: #e8f0fa; font-size: 1.05rem; font-weight: 600; }
+    .ficha-maquina { color: #e0b45a; font-size: .8rem; margin-top: .15rem; }
     .min-w-0 { min-width: 0; }   /* deja que el nombre largo corte en vez de estirar la fila */
 
     .miniatura {
@@ -252,9 +261,35 @@
     }
 </style>
 
+{# ---- Asignar máquina a varios de una vez (solo en computadora). Las
+      casillas de la tabla pertenecen a este formulario por el atributo form. ---- #}
+<form method="post" action="{{ url_for('asignar_maquina') }}" id="formMaquina"
+      class="content-card p-3 mb-3 d-none d-md-block">
+    <input type="hidden" name="volver" value="{{ request.full_path }}">
+    <div class="row g-2 align-items-end">
+        <div class="col-lg-4">
+            <label class="form-label small mb-1">Asignar máquina a los marcados (<span id="cuentaMarcados">0</span>)</label>
+            <input type="text" name="maquina" class="form-control" list="listaMaquinasLote"
+                   placeholder="Escogé la máquina (vacío = quitarla)">
+            <datalist id="listaMaquinasLote">
+                {% for m in maquinas %}<option value="{{ m }}">{% endfor %}
+            </datalist>
+        </div>
+        <div class="col-lg-3">
+            <label class="form-label small mb-1">Contraseña de administrador</label>
+            <input type="password" name="contrasena" class="form-control" required autocomplete="off">
+        </div>
+        <div class="col-lg-5 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Asignar</button>
+            <button type="button" class="btn btn-outline-secondary" id="marcarTodos">Marcar todos los de la lista</button>
+        </div>
+    </div>
+</form>
+
 <table class="table table-striped align-middle d-none d-md-table">
     <thead>
         <tr>
+            <th><input type="checkbox" class="form-check-input" id="casillaTodos" title="Marcar todos"></th>
             <th></th>
             <th>Código</th>
             <th>Nombre</th>
@@ -268,6 +303,7 @@
     <tbody>
         {% for p in productos %}
         <tr>
+            <td><input type="checkbox" class="form-check-input casilla-lote" name="ids" value="{{ p.id }}" form="formMaquina"></td>
             <td>
                 {% if p.foto %}
                 <a href="{{ url_for('foto_producto', nombre=p.foto) }}" target="_blank">
@@ -276,7 +312,7 @@
                 {% endif %}
             </td>
             <td>{{ p.codigo or '—' }}</td>
-            <td>{{ p.nombre }}</td>
+            <td>{{ p.nombre }}{% if p.maquina %}<div class="ficha-maquina">{{ p.maquina }}</div>{% endif %}</td>
             <td>
                 {% if p.seccion and p.area %}
                     <span class="badge bg-primary">Sección {{ p.seccion }} · {{ p.area }}</span>
@@ -323,7 +359,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="text-center text-muted">No hay productos que coincidan con la búsqueda o los filtros.</td></tr>
+        <tr><td colspan="9" class="text-center text-muted">No hay productos que coincidan con la búsqueda o los filtros.</td></tr>
         {% endfor %}
     </tbody>
 </table>
@@ -355,6 +391,30 @@
 </div>
 
 <script>
+    // Casillas para asignar máquina en lote.
+    (function () {
+        var casillas = Array.from(document.querySelectorAll('.casilla-lote'));
+        var cuenta = document.getElementById('cuentaMarcados');
+        var todos = document.getElementById('casillaTodos');
+        function contar() {
+            var n = casillas.filter(function (c) { return c.checked; }).length;
+            if (cuenta) cuenta.textContent = n;
+            if (todos) todos.checked = n > 0 && n === casillas.length;
+        }
+        casillas.forEach(function (c) { c.addEventListener('change', contar); });
+        function marcar(v) { casillas.forEach(function (c) { c.checked = v; }); contar(); }
+        if (todos) todos.addEventListener('change', function () { marcar(this.checked); });
+        var boton = document.getElementById('marcarTodos');
+        if (boton) boton.addEventListener('click', function () { marcar(true); });
+        var form = document.getElementById('formMaquina');
+        if (form) form.addEventListener('submit', function (e) {
+            if (!casillas.some(function (c) { return c.checked; })) {
+                e.preventDefault();
+                if (cuenta) cuenta.parentElement.classList.add('text-danger');
+            }
+        });
+    })();
+
     // Mover el modal a <body> para escapar el stacking context del contenedor principal
     // (main-wrapper tiene z-index:1 que encierra el modal y lo deja debajo del backdrop)
     var modalEl = document.getElementById('modalEliminar');

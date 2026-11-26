@@ -55,6 +55,17 @@
     </div>
 
     <div class="mb-3">
+        <label class="form-label">Máquina a la que pertenece (opcional)</label>
+        <input type="text" name="maquina" class="form-control" list="listaMaquinas"
+               placeholder="Escogé de la lista o escribí una nueva"
+               value="{{ producto.maquina if producto and producto.maquina else '' }}">
+        <datalist id="listaMaquinas">
+            {% for m in maquinas %}<option value="{{ m }}">{% endfor %}
+        </datalist>
+        <div class="form-text">Sirve para filtrar el inventario por equipo, por ejemplo «todo lo del 5080 KXY».</div>
+    </div>
+
+    <div class="mb-3">
         <label class="form-label">Tipo</label>
         <select name="tipo" id="tipo" class="form-select" onchange="ajustarCampos()">
             <option value="producto" {% if not producto or producto.tipo == 'producto' %}selected{% endif %}>Producto (se vende, controla stock)</option>

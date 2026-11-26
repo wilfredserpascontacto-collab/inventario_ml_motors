@@ -15,7 +15,8 @@ CREATE TABLE productos (
     area TEXT,                                -- espacio dentro de la sección, ej. A1 (opcional)
     marca TEXT,                               -- marca o modelo (opcional)
     foto TEXT,                                -- nombre del archivo dentro de MEDIA_DIR, no la imagen
-    estado TEXT                               -- solo herramientas: buena / dañada / perdida
+    estado TEXT,                              -- solo herramientas: buena / dañada / perdida
+    maquina TEXT                              -- a qué máquina pertenece el repuesto (opcional)
 );
 
 CREATE TABLE ventas (
