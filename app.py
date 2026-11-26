@@ -306,13 +306,13 @@ def api_buscar_productos():
     }
 
 
-def lista_maquinas(conn, incluir_herramientas=True):
+def lista_maquinas(conn):
     """Las máquinas para el filtro y el formulario: las de MAQUINAS primero,
-    en su orden, y después cualquier otra que alguien haya escrito a mano."""
-    filtro = "" if incluir_herramientas else " AND tipo <> 'herramienta'"
+    en su orden, y después cualquier otra que alguien haya escrito a mano.
+    Las herramientas no cuentan: son del taller, no de una máquina."""
     en_uso = [f["maquina"] for f in conn.execute(
         "SELECT DISTINCT maquina FROM productos "
-        "WHERE TRIM(COALESCE(maquina, '')) <> ''" + filtro + " ORDER BY maquina"
+        "WHERE TRIM(COALESCE(maquina, '')) <> '' AND tipo <> 'herramienta' ORDER BY maquina"
     ).fetchall()]
     return list(MAQUINAS) + [m for m in en_uso if m not in MAQUINAS]
 
@@ -371,7 +371,7 @@ def inicio():
         "SELECT DISTINCT area FROM productos "
         "WHERE TRIM(COALESCE(area, '')) <> '' AND tipo <> 'herramienta' ORDER BY area"
     ).fetchall()
-    maquinas = lista_maquinas(conn, incluir_herramientas=False)
+    maquinas = lista_maquinas(conn)
     conn.close()
     resumen = {
         "articulos": len(items),
@@ -404,11 +404,22 @@ def productos():
     seccion = request.args.get("seccion", "").strip()
     area = request.args.get("area", "").strip().upper()
     maquina = request.args.get("maquina", "").strip()
+    # Repuestos, herramientas y servicios van en pestañas separadas. Juntos en
+    # una sola lista, una llave de impacto quedaba entre dos filtros de aceite
+    # y el filtro de máquina las revolvía. Se entra a Repuestos.
+    tipo = request.args.get("tipo", "producto").strip()
+    if tipo not in TIPOS_VALIDOS + ("todos",):
+        tipo = "producto"
     conn = get_db()
     if busqueda:
         items = buscar_productos(conn, busqueda)
     else:
         items = conn.execute("SELECT * FROM productos ORDER BY nombre").fetchall()
+    conteo_tipos = {t: 0 for t in TIPOS_VALIDOS}
+    for i in items:
+        conteo_tipos[i["tipo"]] = conteo_tipos.get(i["tipo"], 0) + 1
+    if tipo != "todos":
+        items = [i for i in items if i["tipo"] == tipo]
     items = filtrar_por_maquina(items, maquina)
     if seccion:
         items = [item for item in items if (item["seccion"] or "") == seccion]
@@ -436,12 +447,13 @@ def productos():
                      for i in items if i["tipo"] == "producto"),
         "sin_precio": sum(1 for i in items
                           if i["tipo"] == "producto" and not (i["precio"] or 0)),
-        "herramientas": sum(1 for i in items if i["tipo"] == "herramienta"),
+        "herramientas": conteo_tipos.get("herramienta", 0),
     }
     return render_template(
         "productos.html", productos=items, busqueda=busqueda,
         seccion=seccion, area=area, secciones=secciones, areas=areas,
         maquina=maquina, maquinas=maquinas, sin_maquina=sin_maquina,
+        tipo=tipo, conteo_tipos=conteo_tipos,
         resumen=resumen,
     )
 
@@ -460,7 +472,7 @@ def nuevo_producto():
         stock = int(request.form.get("stock") or 0) if tipo != "servicio" else 0
         seccion = request.form.get("seccion", "").strip()
         area = request.form.get("area", "").strip().upper()
-        maquina = request.form.get("maquina", "").strip()
+        maquina = request.form.get("maquina", "").strip() if tipo != "herramienta" else ""
         estado = request.form.get("estado", "").strip() if tipo == "herramienta" else ""
 
         if not nombre:
@@ -488,7 +500,7 @@ def nuevo_producto():
         conn.commit()
         conn.close()
         flash(f'"{nombre}" se agregó al catálogo.', "success")
-        return redirect(url_for("productos"))
+        return redirect(url_for("productos", tipo=tipo))
 
     conn = get_db()
     maquinas = lista_maquinas(conn)
@@ -521,7 +533,7 @@ def editar_producto(producto_id):
         stock = int(request.form.get("stock") or 0) if tipo != "servicio" else 0
         seccion = request.form.get("seccion", "").strip()
         area = request.form.get("area", "").strip().upper()
-        maquina = request.form.get("maquina", "").strip()
+        maquina = request.form.get("maquina", "").strip() if tipo != "herramienta" else ""
         estado = request.form.get("estado", "").strip() if tipo == "herramienta" else ""
 
         # Foto: si suben una nueva reemplaza a la anterior; si marcan «quitar»
@@ -569,7 +581,7 @@ def editar_producto(producto_id):
         conn.commit()
         conn.close()
         flash(f'"{nombre}" se actualizó.', "success")
-        return redirect(url_for("productos"))
+        return redirect(url_for("productos", tipo=tipo))
 
     maquinas = lista_maquinas(conn)
     conn.close()
@@ -602,9 +614,10 @@ def asignar_maquina():
     fecha_cambio = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cambiados = 0
     for producto_id in ids:
-        item = conn.execute("SELECT id, nombre, maquina FROM productos WHERE id = ?",
+        item = conn.execute("SELECT id, nombre, maquina, tipo FROM productos WHERE id = ?",
                             (producto_id,)).fetchone()
-        if item is None or (item["maquina"] or "") == maquina:
+        # Las herramientas no pertenecen a una máquina: se saltan aunque las marquen.
+        if item is None or item["tipo"] == "herramienta" or (item["maquina"] or "") == maquina:
             continue
         conn.execute(
             "INSERT INTO historial_productos (producto_id, nombre_producto, campo, valor_anterior, valor_nuevo, fecha) "

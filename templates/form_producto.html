@@ -54,7 +54,7 @@
         </div>
     </div>
 
-    <div class="mb-3">
+    <div class="mb-3" id="campo_maquina">
         <label class="form-label">Máquina a la que pertenece (opcional)</label>
         <input type="text" name="maquina" class="form-control" list="listaMaquinas"
                placeholder="Escogé de la lista o escribí una nueva"
@@ -150,6 +150,8 @@
         document.getElementById('campo_stock').classList.toggle('d-none', tipo === 'servicio');
         document.getElementById('campo_precio').classList.toggle('d-none', tipo === 'herramienta');
         document.getElementById('campo_estado').classList.toggle('d-none', tipo !== 'herramienta');
+        // Las herramientas son del taller, no de una máquina.
+        document.getElementById('campo_maquina').classList.toggle('d-none', tipo === 'herramienta');
     }
     ajustarCampos();
 

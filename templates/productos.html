@@ -16,7 +16,30 @@
     </div>
 </div>
 
+{# Repuestos, herramientas y servicios no se mezclan: cada uno en su pestaña. #}
+{% set q_extra = {'q': busqueda or None, 'seccion': seccion or None, 'area': area or None} %}
+<ul class="nav nav-tabs mb-3 pestanas-tipo">
+    <li class="nav-item">
+        <a class="nav-link {% if tipo == 'producto' %}active{% endif %}" href="{{ url_for('productos', tipo='producto', **q_extra) }}">
+            Repuestos <span class="badge bg-secondary">{{ conteo_tipos.get('producto', 0) }}</span></a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if tipo == 'herramienta' %}active{% endif %}" href="{{ url_for('productos', tipo='herramienta', **q_extra) }}">
+            Herramientas <span class="badge bg-warning text-dark">{{ conteo_tipos.get('herramienta', 0) }}</span></a>
+    </li>
+    {% if conteo_tipos.get('servicio', 0) or tipo == 'servicio' %}
+    <li class="nav-item">
+        <a class="nav-link {% if tipo == 'servicio' %}active{% endif %}" href="{{ url_for('productos', tipo='servicio', **q_extra) }}">
+            Servicios <span class="badge bg-info text-dark">{{ conteo_tipos.get('servicio', 0) }}</span></a>
+    </li>
+    {% endif %}
+    <li class="nav-item">
+        <a class="nav-link {% if tipo == 'todos' %}active{% endif %}" href="{{ url_for('productos', tipo='todos', **q_extra) }}">Todo</a>
+    </li>
+</ul>
+
 <form method="get" class="mb-3 position-relative">
+    <input type="hidden" name="tipo" value="{{ tipo }}">
     <div class="row g-2">
       <div class="col-lg-4">
        <div class="input-group">
@@ -26,6 +49,7 @@
        </div>
        <div id="sugerencias" class="list-group position-absolute shadow-sm" style="z-index: 1000;"></div>
       </div>
+      {% if tipo != 'herramienta' %}
       <div class="col-12 col-lg-3">
         <select name="maquina" class="form-select" onchange="this.form.submit()">
             <option value="">Todas las máquinas</option>
@@ -33,6 +57,7 @@
             {% for m in maquinas %}<option value="{{ m }}" {% if maquina == m %}selected{% endif %}>{{ m }}</option>{% endfor %}
         </select>
       </div>
+      {% endif %}
       <div class="col-6 col-lg-2">
         <select name="seccion" class="form-select" onchange="this.form.submit()">
             <option value="">Todas las secciones</option>
@@ -47,7 +72,7 @@
       </div>
       <div class="col-lg-1">
         {% if busqueda or seccion or area or maquina %}
-        <a href="{{ url_for('productos') }}" class="btn btn-outline-secondary">Limpiar</a>
+        <a href="{{ url_for('productos', tipo=tipo) }}" class="btn btn-outline-secondary">Limpiar</a>
         {% endif %}
       </div>
     </div>
@@ -263,6 +288,7 @@
 
 {# ---- Asignar máquina a varios de una vez (solo en computadora). Las
       casillas de la tabla pertenecen a este formulario por el atributo form. ---- #}
+{% if tipo != 'herramienta' %}
 <form method="post" action="{{ url_for('asignar_maquina') }}" id="formMaquina"
       class="content-card p-3 mb-3 d-none d-md-block">
     <input type="hidden" name="volver" value="{{ request.full_path }}">
@@ -285,11 +311,12 @@
         </div>
     </div>
 </form>
+{% endif %}
 
 <table class="table table-striped align-middle d-none d-md-table">
     <thead>
         <tr>
-            <th><input type="checkbox" class="form-check-input" id="casillaTodos" title="Marcar todos"></th>
+            <th>{% if tipo != 'herramienta' %}<input type="checkbox" class="form-check-input" id="casillaTodos" title="Marcar todos">{% endif %}</th>
             <th></th>
             <th>Código</th>
             <th>Nombre</th>
@@ -303,7 +330,7 @@
     <tbody>
         {% for p in productos %}
         <tr>
-            <td><input type="checkbox" class="form-check-input casilla-lote" name="ids" value="{{ p.id }}" form="formMaquina"></td>
+            <td>{% if p.tipo != 'herramienta' and tipo != 'herramienta' %}<input type="checkbox" class="form-check-input casilla-lote" name="ids" value="{{ p.id }}" form="formMaquina">{% endif %}</td>
             <td>
                 {% if p.foto %}
                 <a href="{{ url_for('foto_producto', nombre=p.foto) }}" target="_blank">
