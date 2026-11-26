@@ -629,7 +629,10 @@ def asignar_maquina():
     conn.commit()
     conn.close()
     destino = maquina or "sin máquina"
-    flash(f"{cambiados} artículo{'' if cambiados == 1 else 's'} quedaron en «{destino}».", "success")
+    if cambiados == 1:
+        flash(f"1 artículo quedó en «{destino}».", "success")
+    else:
+        flash(f"{cambiados} artículos quedaron en «{destino}».", "success")
     return redirect(volver)
 
 
